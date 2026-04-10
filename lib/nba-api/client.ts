@@ -44,10 +44,10 @@ type PlayersCacheMetadata = {
 
 const CACHE_TTL_MS = 1000 * 60 * 5;
 const COVERAGE_MIN_THRESHOLD = 0.6;
-const PLAYERS_PAGE_SIZE = 100;
-const MAX_PLAYER_PAGES_COLD = 2;
-const MAX_PLAYER_PAGES_WARM = 4;
-const SEASON_AVERAGES_CHUNK_SIZE = 50;
+const PLAYERS_PAGE_SIZE = Math.min(100, Math.max(25, Number(process.env.BALLDONTLIE_PLAYERS_PAGE_SIZE || 100)));
+const MAX_PLAYER_PAGES_COLD = Math.max(1, Number(process.env.BALLDONTLIE_MAX_PLAYER_PAGES_COLD || 1));
+const MAX_PLAYER_PAGES_WARM = Math.max(1, Number(process.env.BALLDONTLIE_MAX_PLAYER_PAGES_WARM || 2));
+const SEASON_AVERAGES_CHUNK_SIZE = Math.min(100, Math.max(25, Number(process.env.BALLDONTLIE_SEASON_AVG_CHUNK_SIZE || 100)));
 const UPSTREAM_COOLDOWN_MS = 90_000;
 const playersCacheBySeason = new Map<number, CacheEntry<Player[]>>();
 const playersCacheMetaBySeason = new Map<number, PlayersCacheMetadata>();
@@ -573,7 +573,7 @@ export class NBAStatsClient {
     const coverageRatio = playerIds.length > 0 ? seasonAvgByPlayerId.size / playerIds.length : 0;
     const mapped = mapPlayers(playersRaw, seasonAvgByPlayerId);
     const activePlayers = mapped.filter(hasStatSignal);
-    const hasSeasonAveragesAuthIssue = averagesResult.errorCode === 'UPSTREAM_UNAUTHORIZED';
+    const hasSeasonAveragesUnavailable = Boolean(averagesResult.errorCode);
     const fallbackPlayers = activePlayers.length > 0 ? activePlayers : mapped;
 
     if (activePlayers.length === 0) {
@@ -599,12 +599,12 @@ export class NBAStatsClient {
         };
       }
 
-      if (hasSeasonAveragesAuthIssue && mapped.length > 0) {
+      if (hasSeasonAveragesUnavailable && mapped.length > 0) {
         console.warn(`[PLAYERS_FALLBACK_NO_SEASON_AVERAGES] season=${activeSeason} players=${mapped.length}`);
         return {
           data: mapped,
           source: 'balldontlie',
-          warning: 'BallDontLie season_averages unauthorized. Returning players without season averages',
+          warning: `BallDontLie season_averages unavailable (${averagesResult.errorCode}). Returning players without season averages`,
           errorCode: averagesResult.errorCode,
           meta: {
             statsCoverage: coverageRatio,

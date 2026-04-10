@@ -31,10 +31,13 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.cache ./.cache
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
+RUN mkdir -p .cache
 RUN chown nextjs:nodejs .next
+RUN chown -R nextjs:nodejs .cache
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
