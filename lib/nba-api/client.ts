@@ -204,7 +204,8 @@ async function requestBallDontLie<T = any>(
   apiKey: string | undefined,
   retries = 1
 ): Promise<ProviderResult<T>> {
-  if (!apiKey) {
+  const normalizedApiKey = String(apiKey || '').trim().replace(/^["']|["']$/g, '');
+  if (!normalizedApiKey) {
     const warning = 'BALLDONTLIE_API_KEY is missing';
     logUpstream(endpoint, 'UPSTREAM_UNAUTHORIZED', warning);
     return { data: [] as T, source: 'none', warning, errorCode: 'UPSTREAM_UNAUTHORIZED' };
@@ -216,7 +217,10 @@ async function requestBallDontLie<T = any>(
       const response = await axios.get(`${BALLDONTLIE_BASE_URL}${endpoint}`, {
         params,
         timeout: 10000,
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: {
+          Authorization: normalizedApiKey,
+          'X-API-KEY': normalizedApiKey,
+        },
       });
       return { data: response.data as T, source: 'balldontlie' };
     } catch (error: any) {
@@ -569,6 +573,8 @@ export class NBAStatsClient {
     const coverageRatio = playerIds.length > 0 ? seasonAvgByPlayerId.size / playerIds.length : 0;
     const mapped = mapPlayers(playersRaw, seasonAvgByPlayerId);
     const activePlayers = mapped.filter(hasStatSignal);
+    const hasSeasonAveragesAuthIssue = averagesResult.errorCode === 'UPSTREAM_UNAUTHORIZED';
+    const fallbackPlayers = activePlayers.length > 0 ? activePlayers : mapped;
 
     if (activePlayers.length === 0) {
       console.warn(
@@ -588,6 +594,22 @@ export class NBAStatsClient {
             statsCoverage: cachedMeta?.coverageRatio || 0,
             activePlayersCount: cachedMeta?.activePlayersCount || cachedPlayers.value.length,
             cacheStatus: 'stale',
+            sourceHealth: 'degraded',
+          },
+        };
+      }
+
+      if (hasSeasonAveragesAuthIssue && mapped.length > 0) {
+        console.warn(`[PLAYERS_FALLBACK_NO_SEASON_AVERAGES] season=${activeSeason} players=${mapped.length}`);
+        return {
+          data: mapped,
+          source: 'balldontlie',
+          warning: 'BallDontLie season_averages unauthorized. Returning players without season averages',
+          errorCode: averagesResult.errorCode,
+          meta: {
+            statsCoverage: coverageRatio,
+            activePlayersCount: mapped.length,
+            cacheStatus: 'rejected',
             sourceHealth: 'degraded',
           },
         };
@@ -629,7 +651,7 @@ export class NBAStatsClient {
       }
 
       playersCacheBySeason.set(activeSeason, {
-        value: activePlayers,
+        value: fallbackPlayers,
         expiresAt: now + CACHE_TTL_MS,
       });
       playersCacheMetaBySeason.set(activeSeason, {
@@ -637,20 +659,20 @@ export class NBAStatsClient {
         coverageRatio,
         fetchedAt: new Date().toISOString(),
         sourceHealth: 'degraded',
-        activePlayersCount: activePlayers.length,
+        activePlayersCount: fallbackPlayers.length,
         cacheStatus: 'rejected',
       });
       void persistCache();
 
       return {
-        data: activePlayers,
+        data: fallbackPlayers,
         source: 'balldontlie',
         warning:
-          `Low season averages coverage (${coverageRatio.toFixed(2)}) from BallDontLie. Returning partial active players`,
+          `Low season averages coverage (${coverageRatio.toFixed(2)}) from BallDontLie. Returning partial players snapshot`,
         errorCode: averagesResult.errorCode || playersResponse.errorCode,
         meta: {
           statsCoverage: coverageRatio,
-          activePlayersCount: activePlayers.length,
+          activePlayersCount: fallbackPlayers.length,
           cacheStatus: 'rejected',
           sourceHealth: 'degraded',
         },
