@@ -5,6 +5,7 @@ import { buildPredictionDebate } from '@/lib/ai/prediction-debate';
 import { buildPlayerAgentDebate, buildPlayerMetricScenarios, buildPlayerStatusPrediction } from '@/lib/ai/player-scenarios';
 import { buildPlayerSpecialistPrediction, buildTeamSpecialistPrediction } from '@/lib/ai/specialists';
 import { getRecentSpecialistLearnings, saveSpecialistLearning, type LearningStatus } from '@/lib/ai/learning-store';
+import { withPlayerHeadshotFallback } from '@/lib/media/nba-images';
 import type { Player, TeamWithStats } from '@/lib/types';
 
 type Source = 'nba-stats' | 'balldontlie' | 'boltodds' | 'none';
@@ -224,8 +225,10 @@ function buildCompactPlayerSummary(params: {
   return {
     playerId: player.id,
     playerName: player.name,
+    imageUrl: withPlayerHeadshotFallback(player.imageUrl, player.id),
     position: player.position,
     teamAbbreviation: player.team?.abbreviation,
+    teamLogoUrl: player.team?.logoUrl,
     statusPrediction,
     trustScore: debate.trustScore,
     confidence: statusPrediction.confidence,
@@ -770,6 +773,9 @@ async function getMatchupPlayerPredictionInternal(
       player: {
         id: player.id,
         name: player.name,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        imageUrl: withPlayerHeadshotFallback(player.imageUrl, player.id),
         team: player.team,
         position: player.position,
       },

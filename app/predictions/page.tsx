@@ -142,6 +142,7 @@ type PlayerDetailPayload = {
 type PlayerSummary = {
   playerId: string
   playerName: string
+  imageUrl?: string
   position: string
   prediction?: { projectedPoints?: number; projectedAssists?: number; projectedRebounds?: number; confidence?: number }
   learningStatus?: string
@@ -276,7 +277,16 @@ export default function PredictionsPage() {
           if (!pid) continue
           const key = getPlayerCacheKey(gameId, pid)
           nextCache[key] = {
-            player: row.player || { id: pid, name: (row as any).playerName || "Player", position: (row as any).position || "SG", team: { abbreviation: (row as any).teamAbbreviation || "" } },
+            player: row.player || {
+              id: pid,
+              name: (row as any).playerName || "Player",
+              position: (row as any).position || "SG",
+              imageUrl: (row as any).imageUrl || undefined,
+              team: {
+                abbreviation: (row as any).teamAbbreviation || "",
+                logoUrl: (row as any).teamLogoUrl || undefined,
+              },
+            },
             statusPrediction: row.statusPrediction || { availability: "active", performance: "stable", confidence: Number((row as any).confidence || 60) },
             metricScenarios: row.metricScenarios || {},
             agentDebate: row.agentDebate || { rounds: [], finalVerdict: (Number((row as any).trustScore || 0) >= 70 ? "CONFIAVEL" : "NAO_CONFIAVEL"), reasons: [] },

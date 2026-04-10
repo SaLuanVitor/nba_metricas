@@ -1,11 +1,11 @@
 ﻿'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatCard } from "@/components/stat-card"
 import { TopPlayersList } from "@/components/top-players-list"
 import { TrendingPlayers } from "@/components/trending-players"
 import { OperationalAlert } from "@/components/operational-alert"
-import { TeamLogo } from "@/components/entity-media"
-import { Users, Trophy, Activity, Target, Clock, Play, Calendar, ExternalLink } from "lucide-react"
+import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
+import { Users, Trophy, Activity, Target, Clock, Play, Calendar, ExternalLink, TrendingUp } from "lucide-react"
 
 export default function Dashboard() {
   const [data, setData] = useState({
@@ -82,6 +82,29 @@ export default function Dashboard() {
   const scheduledGamesCount = games.filter((g: any) => isGameScheduled(g)).length;
   const finishedGamesCount = games.filter((g: any) => isGameFinished(g)).length;
   const trendingUpCount = players.filter((p: any) => p.projection?.trend === 'up').length;
+  const todayGameTeamAbbrs = useMemo(() => {
+    const set = new Set<string>();
+    for (const game of games) {
+      if (!(isGameLive(game) || isGameScheduled(game))) continue;
+      const homeAbbr = String(game?.homeTeam?.abbreviation || game?.HOME_TEAM?.TEAM_ABBREVIATION || '').toUpperCase();
+      const awayAbbr = String(game?.awayTeam?.abbreviation || game?.AWAY_TEAM?.TEAM_ABBREVIATION || '').toUpperCase();
+      if (homeAbbr) set.add(homeAbbr);
+      if (awayAbbr) set.add(awayAbbr);
+    }
+    return set;
+  }, [games]);
+
+  const todayProjectedPlayers = useMemo(() => {
+    return players
+      .filter((p: any) => todayGameTeamAbbrs.has(String(p?.team?.abbreviation || '').toUpperCase()))
+      .sort((a: any, b: any) => Number(b?.projection?.projectedPoints || 0) - Number(a?.projection?.projectedPoints || 0));
+  }, [players, todayGameTeamAbbrs]);
+
+  const todayHotPlayers = useMemo(() => {
+    return todayProjectedPlayers
+      .filter((p: any) => p?.projection?.trend === 'up')
+      .sort((a: any, b: any) => Number(b?.projection?.confidence || 0) - Number(a?.projection?.confidence || 0));
+  }, [todayProjectedPlayers]);
 
   return (
     <div className="space-y-6">
@@ -127,6 +150,76 @@ export default function Dashboard() {
           subtitle="hoje"
           icon={Trophy}
         />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="rounded-lg border p-4 bg-card">
+          <h2 className="text-base font-semibold mb-1">Jogadores em alta hoje</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Tendência de alta entre os jogos ao vivo e programados do dia.
+          </p>
+          {!todayHotPlayers.length && (
+            <p className="text-sm text-muted-foreground">Sem jogadores em alta identificados no momento.</p>
+          )}
+          <div className="space-y-2">
+            {todayHotPlayers.slice(0, 8).map((player: any) => (
+              <div key={player.id} className="flex items-center justify-between rounded border px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <PlayerAvatar
+                    src={player.imageUrl}
+                    name={player.name}
+                    initials={`${player.firstName?.[0] || player.name?.[0] || 'P'}${player.lastName?.[0] || ''}`}
+                    className="h-10 w-10 rounded-full border bg-white object-cover"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">{player.name}</div>
+                    <div className="text-xs text-muted-foreground">{player.team?.abbreviation || '-'} • {player.position || '-'}</div>
+                  </div>
+                </div>
+                <div className="text-right text-sm">
+                  <div className="font-semibold">{Number(player.projection?.projectedPoints || 0).toFixed(1)} pts</div>
+                  <div className="text-xs text-green-500 inline-flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    {Number(player.projection?.confidence || 0)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border p-4 bg-card">
+          <h2 className="text-base font-semibold mb-1">Projeções dos jogadores de hoje</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Todos os jogadores dos confrontos de hoje (ao vivo e programados).
+          </p>
+          {!todayProjectedPlayers.length && (
+            <p className="text-sm text-muted-foreground">Sem projeções disponíveis para os jogos do dia.</p>
+          )}
+          <div className="max-h-[360px] overflow-auto space-y-2 pr-1">
+            {todayProjectedPlayers.map((player: any) => (
+              <div key={player.id} className="flex items-center justify-between rounded border px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <PlayerAvatar
+                    src={player.imageUrl}
+                    name={player.name}
+                    initials={`${player.firstName?.[0] || player.name?.[0] || 'P'}${player.lastName?.[0] || ''}`}
+                    className="h-10 w-10 rounded-full border bg-white object-cover"
+                  />
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate">{player.name}</div>
+                    <div className="text-xs text-muted-foreground">{player.team?.abbreviation || '-'} • {player.position || '-'}</div>
+                  </div>
+                </div>
+                <div className="text-right text-sm">
+                  <div className="font-semibold">{Number(player.projection?.projectedPoints || 0).toFixed(1)} pts</div>
+                  <div className="text-xs text-muted-foreground">
+                    AST {Number(player.projection?.projectedAssists || 0).toFixed(1)} • REB {Number(player.projection?.projectedRebounds || 0).toFixed(1)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="rounded-lg border p-4 bg-card">
