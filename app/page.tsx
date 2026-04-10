@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { StatCard } from "@/components/stat-card"
 import { TopPlayersList } from "@/components/top-players-list"
 import { TrendingPlayers } from "@/components/trending-players"
+import { OperationalAlert } from "@/components/operational-alert"
+import { TeamLogo } from "@/components/entity-media"
 import { Users, Trophy, Activity, Target, Clock, Play, Calendar, ExternalLink } from "lucide-react"
 
 export default function Dashboard() {
@@ -127,6 +129,20 @@ export default function Dashboard() {
         />
       </div>
 
+      <div className="rounded-lg border p-4 bg-card">
+        <h2 className="text-base font-semibold mb-1">O que isso significa</h2>
+        <p className="text-sm text-muted-foreground">
+          Este painel mostra sinais do momento. Quando a saúde da fonte estiver degradada, os números podem ficar parciais e mudar rapidamente.
+        </p>
+      </div>
+
+      {sourceHealth === "degraded" && (
+        <OperationalAlert
+          title="Dados parciais no momento"
+          message="Algumas fontes externas estão instáveis. Continuamos exibindo o melhor snapshot disponível."
+        />
+      )}
+
       {liveGamesCount > 0 && (
         <div className="border border-green-500/50 rounded-lg p-4 bg-green-900/10">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -199,6 +215,8 @@ function isGameFinished(game: any): boolean {
 function GameCard({ game }: { game: any }) {
   const homeTeam = game.homeTeam?.abbreviation || game.HOME_TEAM?.TEAM_ABBREVIATION || 'HOME';
   const awayTeam = game.awayTeam?.abbreviation || game.AWAY_TEAM?.TEAM_ABBREVIATION || 'AWAY';
+  const homeTeamLogo = game.homeTeam?.logoUrl || game.HOME_TEAM?.logoUrl || "";
+  const awayTeamLogo = game.awayTeam?.logoUrl || game.AWAY_TEAM?.logoUrl || "";
   const homeScore = game.homeScore || game.HOME_SCORE || 0;
   const awayScore = game.awayScore || game.AWAY_SCORE || 0;
   const status = game.status || game.GameStatus;
@@ -253,7 +271,10 @@ function GameCard({ game }: { game: any }) {
     }`}>
       <div className="flex items-center gap-4 md:w-1/3">
         <div className="flex-1 text-right">
-          <span className={`text-xl font-bold ${isLive ? 'text-green-400' : ''}`}>{awayTeam}</span>
+          <div className="inline-flex items-center gap-2">
+            <TeamLogo src={awayTeamLogo} abbreviation={awayTeam} className="h-9 w-9 rounded bg-white p-0.5 object-contain" />
+            <span className={`text-xl font-bold ${isLive ? 'text-green-400' : ''}`}>{awayTeam}</span>
+          </div>
         </div>
         {isLive && (
           <span className="text-green-500 text-2xl font-bold">{awayScore}</span>
@@ -275,7 +296,10 @@ function GameCard({ game }: { game: any }) {
           <span className="text-xl font-bold">{homeScore}</span>
         )}
         <div className="flex-1">
-          <span className={`text-xl font-bold ${isLive ? 'text-green-400' : ''}`}>{homeTeam}</span>
+          <div className="inline-flex items-center gap-2">
+            <TeamLogo src={homeTeamLogo} abbreviation={homeTeam} className="h-9 w-9 rounded bg-white p-0.5 object-contain" />
+            <span className={`text-xl font-bold ${isLive ? 'text-green-400' : ''}`}>{homeTeam}</span>
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import { ExpertAnalysisCard } from "@/components/ai/expert-analysis-card"
 import { PlayerProbabilitiesCard } from "@/components/ai/player-probabilities-card"
 import { SimulationChart } from "@/components/ai/simulation-chart"
 import { TrendIndicator } from "@/components/ai/trend-indicator"
+import { OperationalAlert } from "@/components/operational-alert"
 import { generatePlayerProbabilities } from "@/lib/probability-engine"
 import { simulatePlayerMetric } from "@/lib/simulation-engine"
 import { analyzePlayer, analyzeTeam, generateInsights, analyzeTrend } from "@/lib/ai-experts"
@@ -235,6 +236,12 @@ export default function AIAnalysisPage() {
             </p>
           </div>
         </div>
+        <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+          <strong className="text-foreground">O que isso significa:</strong> esta aba resume tendências e cenários de forma assistida. Use como apoio de decisão, não como certeza absoluta.
+        </div>
+        {specialistWarning && (
+          <OperationalAlert title="Dados parciais no momento" message={specialistWarning} />
+        )}
       </div>
       
       <section>

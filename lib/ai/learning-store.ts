@@ -77,6 +77,8 @@ export async function saveSpecialistLearning(input: {
   sourceHealth?: 'ok' | 'degraded';
   cacheStatus?: 'fresh' | 'stale' | 'rejected';
   tags?: string[];
+  forcePersist?: boolean;
+  processRunId?: string;
 }): Promise<{ persisted: boolean; status: LearningStatus; warning?: string; lastPersistedAt?: string }> {
   if (!isPgConfigured()) {
     return { persisted: false, status: 'disabled', warning: 'DATABASE_URL not configured; learning not persisted' };
@@ -98,7 +100,7 @@ export async function saveSpecialistLearning(input: {
       explainability: lastLearning?.learning?.explainability || {},
     };
 
-    if (lastLearning) {
+    if (lastLearning && !input.forcePersist) {
       const lastCapturedAt = new Date(lastLearning.capturedAt).getTime();
       const ageMs = Date.now() - lastCapturedAt;
       if (ageMs < LEARNING_WINDOW_MS) {
@@ -120,6 +122,9 @@ export async function saveSpecialistLearning(input: {
         };
       }
     }
+    if (input.forcePersist) {
+      console.info(`[MATCHUP_TRAINING_FORCED_SAVE] entity=${input.entityType}:${input.entityId} processRunId=${input.processRunId || 'n/a'}`);
+    }
 
     const changed = diffKeys(lastCore, learningCore);
     const enrichedLearning = {
@@ -127,6 +132,7 @@ export async function saveSpecialistLearning(input: {
       metadata: {
         version: 'v1',
         capturedAt,
+        processRunId: input.processRunId || null,
         sourceHealth: input.sourceHealth || 'degraded',
         cacheStatus: input.cacheStatus || 'rejected',
         diffKeys: changed,

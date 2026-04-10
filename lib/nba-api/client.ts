@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getBoltOddsNBAGamesToday } from '@/lib/odds-api/boltodds';
 import { getLocalISODate } from '@/lib/date-utils';
+import { playerHeadshotUrl, teamLogoUrl } from '@/lib/media/nba-images';
 
 const BALLDONTLIE_BASE_URL = 'https://api.balldontlie.io/v1';
 
@@ -331,6 +332,7 @@ function mapPlayers(playersRaw: AnyRecord[], seasonAvgByPlayerId: Map<number, An
       id: teamAbbreviation.toLowerCase(),
       name: String(entry.team?.name || teamAbbreviation),
       abbreviation: teamAbbreviation,
+      logoUrl: teamLogoUrl({ id: String(entry.team?.id || ''), abbreviation: teamAbbreviation }),
       city: String(entry.team?.city || ''),
       conference: 'West' as const,
       division: 'Unknown',
@@ -392,6 +394,7 @@ function mapPlayers(playersRaw: AnyRecord[], seasonAvgByPlayerId: Map<number, An
         id: team.id,
         name: team.name,
         abbreviation: team.abbreviation,
+        logoUrl: team.logoUrl,
         city: team.city,
         conference: team.conference,
         division: team.division,
@@ -403,7 +406,7 @@ function mapPlayers(playersRaw: AnyRecord[], seasonAvgByPlayerId: Map<number, An
       age: 27,
       experience: 1,
       college: 'N/A',
-      imageUrl: '',
+      imageUrl: playerHeadshotUrl(String(playerId)),
       seasonStats,
       last5Games: [],
       projection: {
@@ -428,6 +431,7 @@ function mapTeams(rawTeams: AnyRecord[]): TeamWithStats[] {
       id: abbreviation.toLowerCase(),
       name: String(teamRow.name || abbreviation),
       abbreviation,
+      logoUrl: teamLogoUrl({ id: String(teamRow.id || ''), abbreviation }),
       city: String(teamRow.city || ''),
       conference: 'West',
       division: String(teamRow.division || 'Unknown'),
@@ -793,12 +797,14 @@ export class NBAStatsClient {
         homeTeam: {
           id: String(game.home_team?.id || ''),
           abbreviation: game.home_team?.abbreviation || 'HOME',
+          logoUrl: teamLogoUrl({ id: String(game.home_team?.id || ''), abbreviation: game.home_team?.abbreviation || 'HOME' }),
           name: game.home_team?.name || 'Home',
           city: game.home_team?.city || '',
         },
         awayTeam: {
           id: String(game.visitor_team?.id || ''),
           abbreviation: game.visitor_team?.abbreviation || 'AWAY',
+          logoUrl: teamLogoUrl({ id: String(game.visitor_team?.id || ''), abbreviation: game.visitor_team?.abbreviation || 'AWAY' }),
           name: game.visitor_team?.name || 'Away',
           city: game.visitor_team?.city || '',
         },

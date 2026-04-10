@@ -66,7 +66,11 @@ class DataOrchestrator {
 
   private async saveCached(key: string, payload: any): Promise<void> {
     this.memoryCache.set(key, { payload, updatedAt: Date.now() });
-    await this.persistCache();
+    try {
+      await this.persistCache();
+    } catch (error) {
+      console.warn(`[CACHE_PERSIST_FAILED] key=${key}`, error);
+    }
   }
 
   private sourceHealthFromSource(source: ProviderSource): SourceHealth {
@@ -96,20 +100,25 @@ class DataOrchestrator {
       validate?: (data: T) => boolean;
       enrich?: (resp: ProviderResponse<T>) => Partial<OrchestratedResponse<T>>;
       ttlMs?: number;
+      forceRefresh?: boolean;
     }
   ): Promise<OrchestratedResponse<T>> {
     await this.ensureCacheLoaded();
     const cached = this.getCached(key);
     const ttlMs = options?.ttlMs ?? CACHE_TTL_MS;
+    const forceRefresh = options?.forceRefresh ?? false;
     const cacheFresh = cached ? Date.now() - cached.updatedAt < ttlMs : false;
-    if (cacheFresh) {
+    if (cacheFresh && !forceRefresh) {
       return {
         ...(cached!.payload as OrchestratedResponse<T>),
         cacheStatus: 'fresh',
       };
     }
+    if (forceRefresh) {
+      console.info(`[MATCHUP_CACHE_BYPASSED] key=${key}`);
+    }
 
-    if (this.inCooldown(key) && cached) {
+    if (!forceRefresh && this.inCooldown(key) && cached) {
       console.warn(`[CACHE_STALE_SERVED] key=${key} reason=cooldown`);
       return {
         ...(cached.payload as OrchestratedResponse<T>),
@@ -122,7 +131,18 @@ class DataOrchestrator {
     let lastFailure: ProviderResponse<T> | null = null;
     for (let index = 0; index < fetchers.length; index += 1) {
       const fetcher = fetchers[index];
-      const result = await fetcher();
+      let result: ProviderResponse<T>;
+      try {
+        result = await fetcher();
+      } catch (error: any) {
+        console.error(`[PROVIDER_FETCH_THROWN] key=${key} attempt=${index + 1}`, error);
+        result = {
+          data: (Array.isArray(cached?.payload?.data) ? [] : (null as any)) as T,
+          source: 'none',
+          warning: `Provider execution failed (${error?.message || 'unknown error'})`,
+          errorCode: 'UPSTREAM_BAD_RESPONSE',
+        };
+      }
       const hasValidData = options?.validate ? options.validate(result.data) : Boolean(result.data && (Array.isArray(result.data) ? result.data.length : true));
       if (hasValidData) {
         if (index > 0) {
@@ -166,7 +186,7 @@ class DataOrchestrator {
     };
   }
 
-  async getPlayers(season?: string): Promise<OrchestratedResponse<Player[]>> {
+  async getPlayers(season?: string, options?: { forceRefresh?: boolean }): Promise<OrchestratedResponse<Player[]>> {
     return this.runWithFallbacks<Player[]>(
       `players:${season || 'current'}`,
       [
@@ -182,6 +202,7 @@ class DataOrchestrator {
             activePlayersCount: players.length,
           };
         },
+        forceRefresh: options?.forceRefresh,
       }
     );
   }
@@ -210,7 +231,7 @@ class DataOrchestrator {
     );
   }
 
-  async getGamesToday(dateISO?: string): Promise<OrchestratedResponse<GameDTO[]>> {
+  async getGamesToday(dateISO?: string, options?: { forceRefresh?: boolean }): Promise<OrchestratedResponse<GameDTO[]>> {
     return this.runWithFallbacks<GameDTO[]>(
       `games-today:${dateISO || 'today'}`,
       [
@@ -221,6 +242,7 @@ class DataOrchestrator {
       {
         validate: (data) => Array.isArray(data) && data.length > 0,
         ttlMs: GAMES_CACHE_TTL_MS,
+        forceRefresh: options?.forceRefresh,
       }
     );
   }
@@ -239,25 +261,31 @@ class DataOrchestrator {
     );
   }
 
-  async getTeams(season?: string): Promise<OrchestratedResponse<TeamWithStats[]>> {
+  async getTeams(season?: string, options?: { forceRefresh?: boolean }): Promise<OrchestratedResponse<TeamWithStats[]>> {
     return this.runWithFallbacks<TeamWithStats[]>(
       `teams:${season || 'current'}`,
       [
         () => this.nbaStats.getTeams(season),
         () => this.balldontlie.getTeams(season),
       ],
-      { validate: (data) => Array.isArray(data) && data.length > 0 }
+      {
+        validate: (data) => Array.isArray(data) && data.length > 0,
+        forceRefresh: options?.forceRefresh,
+      }
     );
   }
 
-  async getTeamRoster(teamId: string, season?: string): Promise<OrchestratedResponse<Player[]>> {
+  async getTeamRoster(teamId: string, season?: string, options?: { forceRefresh?: boolean }): Promise<OrchestratedResponse<Player[]>> {
     return this.runWithFallbacks<Player[]>(
       `team-roster:${season || 'current'}:${teamId}`,
       [
         () => this.nbaStats.getTeamRoster(teamId, season),
         () => this.balldontlie.getTeamRoster(teamId, season),
       ],
-      { validate: (data) => Array.isArray(data) && data.length > 0 }
+      {
+        validate: (data) => Array.isArray(data) && data.length > 0,
+        forceRefresh: options?.forceRefresh,
+      }
     );
   }
 }

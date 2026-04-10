@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PlayerAvatar } from "@/components/entity-media"
 import { cn } from "@/lib/utils"
 import type { Player } from "@/lib/types"
 import { TrendingUp, TrendingDown, Minus, AlertCircle } from "lucide-react"
@@ -25,15 +26,15 @@ export function PlayerCard({ player, showProjections = true, compact = false }: 
       )}>
         <CardContent className={cn("flex items-center gap-4", compact ? "p-0" : "pt-6")}>
           {/* Avatar placeholder */}
-          <div 
+          <PlayerAvatar
+            src={player.imageUrl}
+            name={player.name}
+            initials={`${player.firstName?.[0] || "P"}${player.lastName?.[0] || ""}`}
             className={cn(
-              "rounded-full bg-secondary flex items-center justify-center font-bold text-foreground",
-              compact ? "h-10 w-10 text-sm" : "h-14 w-14 text-lg"
+              "rounded-full border bg-white object-cover",
+              compact ? "h-14 w-14" : "h-20 w-20"
             )}
-            style={{ backgroundColor: player.team.primaryColor + "33" }}
-          >
-            {player.firstName[0]}{player.lastName[0]}
-          </div>
+          />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">

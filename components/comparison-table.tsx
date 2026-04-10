@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
 import { cn } from "@/lib/utils"
 import type { Player } from "@/lib/types"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
@@ -75,26 +76,36 @@ export function ComparisonTable({ player1, player2 }: ComparisonTableProps) {
         <div className="grid grid-cols-3 gap-4 mb-6 pb-4 border-b border-border">
           <div />
           <div className="text-center">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2"
-              style={{ backgroundColor: player1.team.primaryColor + "33" }}
-            >
-              {player1.firstName[0]}{player1.lastName[0]}
-            </div>
+            <PlayerAvatar
+              src={player1.imageUrl}
+              name={player1.name}
+              initials={`${player1.firstName?.[0] || "P"}${player1.lastName?.[0] || ""}`}
+              className="w-16 h-16 rounded-full border bg-white object-cover mx-auto mb-2"
+            />
             <div className="font-medium text-foreground">{player1.name}</div>
             <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <TeamLogo
+                src={player1.team.logoUrl}
+                abbreviation={player1.team.abbreviation}
+                className="h-6 w-6 rounded-sm bg-white p-0.5 object-contain"
+              />
               {player1.team.abbreviation} <TrendIcon player={player1} />
             </div>
           </div>
           <div className="text-center">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2"
-              style={{ backgroundColor: player2.team.primaryColor + "33" }}
-            >
-              {player2.firstName[0]}{player2.lastName[0]}
-            </div>
+            <PlayerAvatar
+              src={player2.imageUrl}
+              name={player2.name}
+              initials={`${player2.firstName?.[0] || "P"}${player2.lastName?.[0] || ""}`}
+              className="w-16 h-16 rounded-full border bg-white object-cover mx-auto mb-2"
+            />
             <div className="font-medium text-foreground">{player2.name}</div>
             <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <TeamLogo
+                src={player2.team.logoUrl}
+                abbreviation={player2.team.abbreviation}
+                className="h-6 w-6 rounded-sm bg-white p-0.5 object-contain"
+              />
               {player2.team.abbreviation} <TrendIcon player={player2} />
             </div>
           </div>

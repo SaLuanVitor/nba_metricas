@@ -3,9 +3,16 @@ import { getMatchupPrediction } from '@/lib/ai/predictions-service';
 
 type Params = { params: Promise<{ gameId: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   const { gameId } = await params;
-  const result = await getMatchupPrediction(gameId, { persistLearners: true });
+  const { searchParams } = new URL(request.url);
+  const refresh = String(searchParams.get('refresh') || 'false').toLowerCase() === 'true';
+  const forcePersist = String(searchParams.get('forcePersist') || 'false').toLowerCase() === 'true';
+  const result = await getMatchupPrediction(gameId, {
+    persistLearners: true,
+    refresh,
+    forcePersistLearning: forcePersist,
+  });
 
   return NextResponse.json({
     success: true,

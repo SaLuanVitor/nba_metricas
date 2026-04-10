@@ -6,6 +6,7 @@ export type Team = {
   id: string
   name: string
   abbreviation: string
+  logoUrl?: string
   city: string
   conference: "East" | "West"
   division: string
@@ -57,6 +58,7 @@ export type PlayerStats = {
   steals: number
   blocks: number
   turnovers: number
+  fouls?: number
 }
 
 export type PlayerProjection = {

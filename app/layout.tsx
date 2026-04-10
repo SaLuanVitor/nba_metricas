@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Header } from '@/components/header'
+import { ThemeProvider } from '@/components/theme-provider'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -35,13 +35,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased min-h-screen bg-background`}>
-        <Header />
-        <main className="container mx-auto px-4 py-6">
-          {children}
-        </main>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="nba-stats-theme">
+          <Header />
+          <main className="container mx-auto px-4 py-6">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   )

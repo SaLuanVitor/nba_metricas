@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { headers } from "next/headers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +14,10 @@ import {
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, GitCompare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TeamStatsChart } from "@/components/team-stats-chart"
+import { OperationalAlert } from "@/components/operational-alert"
+import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
+import { getDataOrchestrator } from "@/lib/data-orchestrator"
+import { buildFallbackTeamsFromPlayers } from "@/lib/nba/team-fallback"
 import type { Player, TeamWithStats } from "@/lib/types"
 
 interface TeamDetailPageProps {
@@ -23,29 +26,44 @@ interface TeamDetailPageProps {
 
 export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   const { id } = await params
-  const h = await headers()
-  const host = h.get("x-forwarded-host") || h.get("host")
-  const protocol = h.get("x-forwarded-proto") || "http"
-  const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
-
-  const [teamsRes, playersRes] = await Promise.all([
-    fetch(`${baseUrl}/api/teams`, { cache: "no-store" }),
-    fetch(`${baseUrl}/api/players`, { cache: "no-store" }),
+  const season = process.env.NBA_SEASON
+  const orchestrator = getDataOrchestrator()
+  const [teamsResult, rosterResult, playersResult] = await Promise.all([
+    orchestrator.getTeams(season),
+    orchestrator.getTeamRoster(id, season),
+    orchestrator.getPlayers(season),
   ])
-  const teamsPayload = await teamsRes.json()
-  const playersPayload = await playersRes.json()
+  const teamsFromFallback =
+    (!teamsResult?.data || teamsResult.data.length === 0)
+      ? buildFallbackTeamsFromPlayers(playersResult?.data || [])
+      : []
+  const availableTeams = (teamsResult?.data && teamsResult.data.length > 0)
+    ? teamsResult.data
+    : teamsFromFallback
 
-  const team = (teamsPayload?.data || []).find((t: TeamWithStats) => t.id === id)
+  const team = (availableTeams || []).find(
+    (t: TeamWithStats) =>
+      String(t.id) === String(id) ||
+      String(t.abbreviation || "").toLowerCase() === String(id || "").toLowerCase()
+  )
 
   if (!team) {
     notFound()
   }
 
-  const roster: Player[] = (playersPayload?.data || []).filter((p: Player) => {
-    const byId = String(p.team?.id || '') === String(id)
-    const byAbbr = String(p.team?.abbreviation || '').toLowerCase() === String(team.abbreviation || '').toLowerCase()
+  const rosterFromTeam = Array.isArray(rosterResult?.data) ? rosterResult.data : []
+  const rosterFromPlayers = (playersResult?.data || []).filter((p: Player) => {
+    const byId = String(p.team?.id || "") === String(team.id)
+    const byAbbr =
+      String(p.team?.abbreviation || "").toLowerCase() ===
+      String(team.abbreviation || "").toLowerCase()
     return byId || byAbbr
   })
+  const rosterMap = new Map<string, Player>()
+  for (const p of [...rosterFromTeam, ...rosterFromPlayers]) {
+    if (p?.id) rosterMap.set(String(p.id), p)
+  }
+  const roster: Player[] = Array.from(rosterMap.values())
   const totals = roster.reduce(
     (acc: { points: number; assists: number; rebounds: number; minutes: number; fantasy: number }, player: Player) => ({
       points: acc.points + player.projection.projectedPoints,
@@ -85,6 +103,40 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     }
   }
 
+  const source = teamsResult?.source !== "none"
+    ? teamsResult?.source
+    : rosterResult?.source !== "none"
+      ? rosterResult?.source
+      : playersResult?.source || "none"
+  const sourceHealth =
+    teamsResult?.sourceHealth === "ok" &&
+    rosterResult?.sourceHealth === "ok" &&
+    playersResult?.sourceHealth === "ok"
+      ? "ok"
+      : "degraded"
+  const cacheStatus =
+    teamsResult?.cacheStatus !== "rejected"
+      ? teamsResult?.cacheStatus
+      : rosterResult?.cacheStatus !== "rejected"
+        ? rosterResult?.cacheStatus
+        : playersResult?.cacheStatus || "rejected"
+  const warning = teamsResult?.warning || rosterResult?.warning || playersResult?.warning
+  const teamStrength = Number(team.stats?.offensiveRating || 0) - Number(team.stats?.defensiveRating || 0)
+  const riskLabel =
+    sourceHealth === "degraded"
+      ? "Risco medio"
+      : teamStrength >= 3
+        ? "Risco baixo"
+        : teamStrength >= 0
+          ? "Risco medio"
+          : "Risco alto"
+  const summaryLabel =
+    teamStrength >= 3
+      ? `${team.city} ${team.name} chega com boa vantagem tecnica.`
+      : teamStrength >= 0
+        ? `${team.city} ${team.name} chega em cenario equilibrado.`
+        : `${team.city} ${team.name} chega em cenario de risco.`
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -94,12 +146,12 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
           </Button>
         </Link>
         <div className="flex items-center gap-4">
-          <div
-            className="h-16 w-16 rounded-xl flex items-center justify-center text-white font-bold text-xl"
-            style={{ backgroundColor: team.primaryColor }}
-          >
-            {team.abbreviation}
-          </div>
+          <TeamLogo
+            src={team.logoUrl}
+            abbreviation={team.abbreviation}
+            className="h-24 w-24 rounded-xl border bg-white p-1.5 object-contain"
+            loading="eager"
+          />
           <div>
             <h1 className="text-3xl font-bold text-foreground">
               {team.city} {team.name}
@@ -113,6 +165,41 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {(sourceHealth === "degraded" || warning) && (
+        <OperationalAlert
+          title="Dados parciais no momento"
+          message={warning || "Algumas fontes estao instaveis; os numeros podem oscilar."}
+        />
+      )}
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Resumo para cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">{summaryLabel}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Risco da leitura</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            <div className="text-xl font-semibold">{riskLabel}</div>
+            <div className="text-muted-foreground">Baseado em saude da fonte e forca tecnica atual.</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Transparencia de dados</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            <div>Fonte: {source || "none"}</div>
+            <div>Saude: {sourceHealth}</div>
+            <div>Cache: {cacheStatus}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Stats Overview */}
@@ -267,12 +354,12 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
                         className="hover:text-primary transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <div
-                            className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                            style={{ backgroundColor: team.primaryColor }}
-                          >
-                            {player.number}
-                          </div>
+                          <PlayerAvatar
+                            src={player.imageUrl}
+                            name={player.name}
+                            initials={`${player.firstName?.[0] || "P"}${player.lastName?.[0] || ""}`}
+                            className="h-12 w-12 rounded-full border bg-white object-cover"
+                          />
                           <div>
                             <p className="font-medium">{player.name}</p>
                             {player.injury && (

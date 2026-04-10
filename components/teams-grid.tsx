@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { TeamLogo } from "@/components/entity-media"
 import type { TeamWithStats } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -19,30 +20,35 @@ export function TeamsGrid({ teams }: TeamsGridProps) {
         const losses = Number(team.stats?.losses || 0)
         const gamesPlayed = Number(team.record?.gamesPlayed ?? wins + losses)
         const winPct = Number(team.record?.winPct ?? (gamesPlayed > 0 ? wins / gamesPlayed : 0))
+        const rankConference = Number(team.rank?.conference ?? 0)
+        const conference = team.conference || "N/A"
+        const abbreviation = team.abbreviation || "NBA"
+        const city = team.city || "Time"
+        const name = team.name || "NBA"
         const last10 = String(team.record?.last10 || (() => {
           const games = Array.isArray(team.lastGames) ? team.lastGames.slice(-10) : []
           const winCount = games.filter((result) => result === "W").length
           return `${winCount}-${Math.max(0, games.length - winCount)}`
         })())
         return (
-        <Link key={`${teamId}-${index}`} href={`/teams/${teamId}`}>
+        <Link key={`${teamId}-${abbreviation}-${name}`} href={`/teams/${teamId}`}>
           <Card className="hover:bg-secondary/50 transition-colors cursor-pointer h-full">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: team.primaryColor }}
-                  >
-                    {team.abbreviation}
-                  </div>
+                  <TeamLogo
+                    src={team.logoUrl}
+                    abbreviation={abbreviation}
+                    className="h-14 w-14 rounded-lg border bg-white p-1.5 object-contain"
+                    title={`${city} ${name}`}
+                  />
                   <div>
-                    <h3 className="font-semibold text-foreground">{team.city}</h3>
-                    <p className="text-sm text-muted-foreground">{team.name}</p>
+                    <h3 className="font-semibold text-foreground">{city}</h3>
+                    <p className="text-sm text-muted-foreground">{name}</p>
                   </div>
                 </div>
                 <Badge variant="outline" className="text-xs">
-                  #{team.rank.conference} {team.conference}
+                  #{rankConference} {conference}
                 </Badge>
               </div>
 

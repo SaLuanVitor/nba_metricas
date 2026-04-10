@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { TeamLogo } from "@/components/entity-media"
 import { cn } from "@/lib/utils"
 
 interface Game {
@@ -14,29 +15,20 @@ interface Game {
   homeTeam: {
     id: string
     abbreviation: string
+    logoUrl?: string
     name: string
     city: string
   }
   awayTeam: {
     id: string
     abbreviation: string
+    logoUrl?: string
     name: string
     city: string
   }
   homeScore: number
   awayScore: number
   venue?: string
-}
-
-const teamColors: Record<string, string> = {
-  lal: '#552583', gsw: '#1D428A', bos: '#007A33', mia: '#98002E',
-  nyk: '#006BB6', bkn: '#000000', phi: '#006BB6', tor: '#CE1141',
-  chi: '#CE1141', cle: '#860038', det: '#002D62', ind: '#002D62',
-  mil: '#00471B', atl: '#E31837', cha: '#00788C', was: '#002B5C',
-  dal: '#00538C', hou: '#CE1141', mem: '#12173F', nop: '#00788C',
-  phx: '#1D1160', sac: '#5A2D81', lac: '#C8102E', den: '#FDB927',
-  min: '#0C2340', okc: '#EF3B24', por: '#000000', sas: '#C4CED4',
-  uta: '#002B5C'
 }
 
 export function LiveGames() {
@@ -114,9 +106,6 @@ export function LiveGames() {
           <div className="text-muted-foreground text-sm">Nenhum jogo hoje</div>
         ) : (
           displayGames.map((game) => {
-            const homeColor = teamColors[game.homeTeam.id] || '#333'
-            const awayColor = teamColors[game.awayTeam.id] || '#333'
-            
             return (
               <div
                 key={game.id}
@@ -145,12 +134,12 @@ export function LiveGames() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: awayColor }}
-                      >
-                        {game.awayTeam.abbreviation[0]}
-                      </div>
+                      <TeamLogo
+                        src={game.awayTeam.logoUrl}
+                        abbreviation={game.awayTeam.abbreviation}
+                        className="w-9 h-9 rounded-full border bg-white p-0.5 object-contain"
+                        title={game.awayTeam.name}
+                      />
                       <span className="font-medium text-foreground">
                         {game.awayTeam.city} {game.awayTeam.name}
                       </span>
@@ -164,12 +153,12 @@ export function LiveGames() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: homeColor }}
-                      >
-                        {game.homeTeam.abbreviation[0]}
-                      </div>
+                      <TeamLogo
+                        src={game.homeTeam.logoUrl}
+                        abbreviation={game.homeTeam.abbreviation}
+                        className="w-9 h-9 rounded-full border bg-white p-0.5 object-contain"
+                        title={game.homeTeam.name}
+                      />
                       <span className="font-medium text-foreground">
                         {game.homeTeam.city} {game.homeTeam.name}
                       </span>

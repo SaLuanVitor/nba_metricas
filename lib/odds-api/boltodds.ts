@@ -1,4 +1,5 @@
 import { getLocalISODate } from '@/lib/date-utils';
+import { teamLogoUrl } from '@/lib/media/nba-images';
 
 type AnyRecord = Record<string, any>;
 
@@ -85,12 +86,14 @@ export async function getBoltOddsNBAGamesToday(apiKey?: string): Promise<BoltOdd
         homeTeam: {
           id: '',
           abbreviation: parsed?.homeTeam?.slice(0, 3).toUpperCase() || 'HOME',
+          logoUrl: teamLogoUrl({ abbreviation: parsed?.homeTeam?.slice(0, 3).toUpperCase() || 'HOME' }),
           name: parsed?.homeTeam || 'Home',
           city: '',
         },
         awayTeam: {
           id: '',
           abbreviation: parsed?.awayTeam?.slice(0, 3).toUpperCase() || 'AWAY',
+          logoUrl: teamLogoUrl({ abbreviation: parsed?.awayTeam?.slice(0, 3).toUpperCase() || 'AWAY' }),
           name: parsed?.awayTeam || 'Away',
           city: '',
         },

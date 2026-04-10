@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { headers } from "next/headers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PlayerStatsChart } from "@/components/player-stats-chart"
 import { ProjectionCard } from "@/components/projection-card"
+import { OperationalAlert } from "@/components/operational-alert"
+import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
 import { ArrowLeft, AlertCircle, DollarSign, Zap } from "lucide-react"
+import { getDataOrchestrator } from "@/lib/data-orchestrator"
 import type { Player } from "@/lib/types"
 
 type Props = {
@@ -15,18 +17,80 @@ type Props = {
 
 export default async function PlayerDetailPage({ params }: Props) {
   const { id } = await params
-  const h = await headers()
-  const host = h.get("x-forwarded-host") || h.get("host")
-  const protocol = h.get("x-forwarded-proto") || "http"
-  const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
+  const season = process.env.NBA_SEASON
+  let result: any = {
+    source: "none",
+    sourceHealth: "degraded",
+    cacheStatus: "rejected",
+    warning: "Falha ao carregar dados do jogador.",
+    data: null,
+  }
+  let player: Player | null = null
 
-  const response = await fetch(`${baseUrl}/api/players/${id}`, { cache: "no-store" })
-  const payload = await response.json()
-  const player = payload?.data as Player | null
+  try {
+    const orchestrator = getDataOrchestrator()
+    result = await orchestrator.getPlayerById(id, season)
+    player = result?.data as Player | null
+  } catch (error) {
+    console.error(`[PLAYER_DETAIL_LOAD_FAILED] id=${id}`, error)
+  }
 
   if (!player) {
     notFound()
   }
+
+  const firstName = String(player.firstName || "").trim()
+  const lastName = String(player.lastName || "").trim()
+  const initials = `${firstName[0] || player.name?.[0] || "P"}${lastName[0] || player.name?.split(" ")[1]?.[0] || ""}`.toUpperCase()
+  const team = player.team || {
+    id: "unknown",
+    name: "NBA",
+    abbreviation: "NBA",
+    city: "",
+    conference: "East" as const,
+    division: "Unknown",
+    primaryColor: "#1D428A",
+    secondaryColor: "#C8102E",
+  }
+  const seasonStats = player.seasonStats || {
+    points: 0,
+    assists: 0,
+    rebounds: 0,
+    minutes: 0,
+    fieldGoalPercentage: 0,
+    threePointPercentage: 0,
+    freeThrowPercentage: 0,
+    steals: 0,
+    blocks: 0,
+    turnovers: 0,
+    fouls: 0,
+  }
+  const projection = player.projection || {
+    projectedPoints: seasonStats.points,
+    projectedAssists: seasonStats.assists,
+    projectedRebounds: seasonStats.rebounds,
+    projectedMinutes: seasonStats.minutes,
+    confidence: 60,
+    trend: "stable" as const,
+  }
+  const last5Games = Array.isArray(player.last5Games) ? player.last5Games : []
+  const fantasyPoints = Number(player.fantasyPoints || 0)
+  const salary = Number(player.salary || 0)
+  const playerConfidence = Number(projection.confidence || 0)
+  const riskLabel =
+    result?.sourceHealth === "degraded"
+      ? "Risco medio"
+      : playerConfidence >= 75
+        ? "Risco baixo"
+        : playerConfidence >= 60
+          ? "Risco medio"
+          : "Risco alto"
+  const summaryLabel =
+    playerConfidence >= 75
+      ? `${player.name} esta em cenario estavel agora.`
+      : playerConfidence >= 60
+        ? `${player.name} tem cenario moderado agora.`
+        : `${player.name} esta em cenario volatil agora.`
 
   return (
     <div className="space-y-6">
@@ -38,14 +102,50 @@ export default async function PlayerDetailPage({ params }: Props) {
         </Button>
       </Link>
 
+      {(result?.sourceHealth === "degraded" || result?.warning) && (
+        <OperationalAlert
+          title="Dados parciais no momento"
+          message={result?.warning || "Algumas fontes estao instaveis; os numeros podem oscilar."}
+        />
+      )}
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Resumo para cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">{summaryLabel}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Risco da leitura</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            <div className="text-xl font-semibold">{playerConfidence}%</div>
+            <div className="text-muted-foreground">{riskLabel}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Transparencia de dados</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            <div>Fonte: {result?.source || "none"}</div>
+            <div>Saude: {result?.sourceHealth || "degraded"}</div>
+            <div>Cache: {result?.cacheStatus || "rejected"}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Player Header */}
       <div className="flex flex-col md:flex-row gap-6 items-start">
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-foreground shrink-0"
-          style={{ backgroundColor: player.team.primaryColor + "33" }}
-        >
-          {player.firstName[0]}{player.lastName[0]}
-        </div>
+        <PlayerAvatar
+          src={player.imageUrl}
+          name={player.name}
+          initials={initials}
+          className="w-24 h-24 rounded-full border bg-white object-cover shrink-0"
+          loading="eager"
+        />
 
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-3">
@@ -62,9 +162,14 @@ export default async function PlayerDetailPage({ params }: Props) {
             <Badge 
               variant="outline" 
               className="border-border"
-              style={{ borderColor: player.team.primaryColor }}
+              style={{ borderColor: team.primaryColor }}
             >
-              {player.team.city} {player.team.name}
+              <TeamLogo
+                src={team.logoUrl}
+                abbreviation={team.abbreviation}
+                className="mr-1 h-4 w-4 rounded-sm bg-white p-0.5 object-contain inline-block align-middle"
+              />
+              {team.city} {team.name}
             </Badge>
             <span>#{player.number}</span>
             <span>{player.position}</span>
@@ -96,7 +201,7 @@ export default async function PlayerDetailPage({ params }: Props) {
                 <span className="text-xs text-muted-foreground">FPTS</span>
               </div>
               <div className="text-2xl font-bold text-foreground mt-1">
-                {player.fantasyPoints.toFixed(1)}
+                {fantasyPoints.toFixed(1)}
               </div>
             </CardContent>
           </Card>
@@ -107,7 +212,7 @@ export default async function PlayerDetailPage({ params }: Props) {
                 <span className="text-xs text-muted-foreground">Salario</span>
               </div>
               <div className="text-2xl font-bold text-foreground mt-1">
-                ${(player.salary / 1000).toFixed(1)}K
+                ${(salary / 1000).toFixed(1)}K
               </div>
             </CardContent>
           </Card>
@@ -125,25 +230,25 @@ export default async function PlayerDetailPage({ params }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-secondary/50">
                 <div className="text-2xl font-bold text-foreground">
-                  {player.seasonStats.points.toFixed(1)}
+                  {seasonStats.points.toFixed(1)}
                 </div>
                 <div className="text-sm text-muted-foreground">Pontos</div>
               </div>
               <div className="p-4 rounded-lg bg-secondary/50">
                 <div className="text-2xl font-bold text-foreground">
-                  {player.seasonStats.assists.toFixed(1)}
+                  {seasonStats.assists.toFixed(1)}
                 </div>
                 <div className="text-sm text-muted-foreground">Assistencias</div>
               </div>
               <div className="p-4 rounded-lg bg-secondary/50">
                 <div className="text-2xl font-bold text-foreground">
-                  {player.seasonStats.rebounds.toFixed(1)}
+                  {seasonStats.rebounds.toFixed(1)}
                 </div>
                 <div className="text-sm text-muted-foreground">Rebotes</div>
               </div>
               <div className="p-4 rounded-lg bg-secondary/50">
                 <div className="text-2xl font-bold text-foreground">
-                  {player.seasonStats.minutes.toFixed(1)}
+                  {seasonStats.minutes.toFixed(1)}
                 </div>
                 <div className="text-sm text-muted-foreground">Minutos</div>
               </div>
@@ -152,19 +257,19 @@ export default async function PlayerDetailPage({ params }: Props) {
             <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.fieldGoalPercentage.toFixed(1)}%
+                  {seasonStats.fieldGoalPercentage.toFixed(1)}%
                 </div>
                 <div className="text-xs text-muted-foreground">FG%</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.threePointPercentage.toFixed(1)}%
+                  {seasonStats.threePointPercentage.toFixed(1)}%
                 </div>
                 <div className="text-xs text-muted-foreground">3P%</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.freeThrowPercentage.toFixed(1)}%
+                  {seasonStats.freeThrowPercentage.toFixed(1)}%
                 </div>
                 <div className="text-xs text-muted-foreground">FT%</div>
               </div>
@@ -173,19 +278,19 @@ export default async function PlayerDetailPage({ params }: Props) {
             <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.steals.toFixed(1)}
+                  {seasonStats.steals.toFixed(1)}
                 </div>
                 <div className="text-xs text-muted-foreground">Roubos</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.blocks.toFixed(1)}
+                  {seasonStats.blocks.toFixed(1)}
                 </div>
                 <div className="text-xs text-muted-foreground">Bloqueios</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-medium text-foreground">
-                  {player.seasonStats.turnovers.toFixed(1)}
+                  {seasonStats.turnovers.toFixed(1)}
                 </div>
                 <div className="text-xs text-muted-foreground">Turnovers</div>
               </div>
@@ -195,18 +300,18 @@ export default async function PlayerDetailPage({ params }: Props) {
 
         {/* Projections */}
         <ProjectionCard
-          projection={player.projection}
+          projection={projection}
           seasonStats={{
-            points: player.seasonStats.points,
-            assists: player.seasonStats.assists,
-            rebounds: player.seasonStats.rebounds,
-            minutes: player.seasonStats.minutes,
+            points: seasonStats.points,
+            assists: seasonStats.assists,
+            rebounds: seasonStats.rebounds,
+            minutes: seasonStats.minutes,
           }}
         />
       </div>
 
       {/* Performance Chart */}
-      <PlayerStatsChart last5Games={player.last5Games} />
+      <PlayerStatsChart last5Games={last5Games} />
 
       {/* Compare Button */}
       <div className="flex justify-center">

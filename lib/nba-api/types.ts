@@ -26,6 +26,7 @@ export interface Team {
   id: string;
   name: string;
   abbreviation: string;
+  logoUrl?: string;
   city: string;
   conference: 'East' | 'West';
   division: string;
@@ -44,6 +45,7 @@ export interface PlayerStats {
   steals: number;
   blocks: number;
   turnovers: number;
+  fouls?: number;
 }
 
 export interface PlayerProjection {

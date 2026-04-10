@@ -24,8 +24,8 @@ export type GameDTO = {
   date: string;
   gameTime: string;
   watchUrl?: string;
-  homeTeam: { id: string; abbreviation: string; name: string; city: string };
-  awayTeam: { id: string; abbreviation: string; name: string; city: string };
+  homeTeam: { id: string; abbreviation: string; name: string; city: string; logoUrl?: string };
+  awayTeam: { id: string; abbreviation: string; name: string; city: string; logoUrl?: string };
   homeScore: number;
   awayScore: number;
   boltOddsGameKey?: string;

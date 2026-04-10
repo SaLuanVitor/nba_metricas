@@ -1,6 +1,7 @@
 import { TeamsGrid } from "@/components/teams-grid"
 import { getConferenceByAbbreviation } from "@/lib/nba/team-metadata"
-import { headers } from "next/headers"
+import { getDataOrchestrator } from "@/lib/data-orchestrator"
+import { buildFallbackTeamsFromPlayers } from "@/lib/nba/team-fallback"
 
 export const metadata = {
   title: "Times NBA - Estatisticas e Rankings",
@@ -8,25 +9,19 @@ export const metadata = {
 }
 
 async function getData() {
-  const headerList = await headers()
-  const host = headerList.get("x-forwarded-host") || headerList.get("host")
-  const protocol = headerList.get("x-forwarded-proto") || "http"
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (host ? `${protocol}://${host}` : "http://localhost:3000")
+  const orchestrator = getDataOrchestrator()
+  const season = process.env.NBA_SEASON
+  const [teamsResult, playersResult] = await Promise.all([
+    orchestrator.getTeams(season),
+    orchestrator.getPlayers(season),
+  ])
+  const teams =
+    (teamsResult.data || []).length > 0
+      ? (teamsResult.data || [])
+      : buildFallbackTeamsFromPlayers(playersResult.data || [])
 
-  const teamsRes = await fetch(`${baseUrl}/api/teams`, {
-    next: { revalidate: 60 }
-  })
-
-  const teamsData = await teamsRes.json()
-  
-  if (!teamsData.success) {
-    throw new Error(teamsData.error || 'Failed to fetch teams')
-  }
-  
   return {
-    teams: teamsData.data || []
+    teams
   }
 }
 

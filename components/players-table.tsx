@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
 import { cn } from "@/lib/utils"
 import type { Position, SortDirection } from "@/lib/types"
 import {
@@ -45,6 +46,7 @@ interface Player {
     id: string
     name: string
     abbreviation: string
+    logoUrl?: string
     primaryColor?: string
   }
   projection: {
@@ -310,12 +312,12 @@ export function PlayersTable() {
               >
                 <TableCell>
                   <Link href={`/players/${player.id}`} className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground"
-                      style={{ backgroundColor: (player.team.primaryColor || '#333') + "33" }}
-                    >
-                      {player.firstName?.[0]}{player.lastName?.[0]}
-                    </div>
+                    <PlayerAvatar
+                      src={(player as any).imageUrl}
+                      name={player.name}
+                      initials={`${(player.firstName?.[0] || player.name?.[0] || "P")}${(player.lastName?.[0] || player.name?.split(" ")?.[1]?.[0] || "")}`}
+                      className="w-12 h-12 rounded-full border bg-white object-cover"
+                    />
                     <div>
                       <div className="font-medium text-foreground flex items-center gap-2">
                         {player.name}
@@ -331,6 +333,11 @@ export function PlayersTable() {
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   <Badge variant="outline" className="border-border text-muted-foreground">
+                    <TeamLogo
+                      src={player.team.logoUrl}
+                      abbreviation={player.team.abbreviation}
+                      className="mr-1 h-6 w-6 rounded-sm bg-white p-0.5 object-contain inline-block align-middle"
+                    />
                     {player.team.abbreviation}
                   </Badge>
                 </TableCell>

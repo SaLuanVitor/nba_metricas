@@ -42,6 +42,7 @@ export async function GET(request: Request, { params }: Params) {
     steals: Number(g.steals || 0),
     blocks: Number(g.blocks || 0),
     turnovers: Number(g.turnovers || 0),
+    fouls: Number(g.fouls || 0),
   }));
 
   const [pointsMarket, assistsMarket, reboundsMarket] = await Promise.all([

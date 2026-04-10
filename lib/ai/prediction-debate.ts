@@ -26,6 +26,12 @@ export type DebateVerdict = {
   winner: DebateWinner;
   summary: string;
   reasons: string[];
+  trustBreakdown: {
+    dataQuality: number;
+    matchupSeparation: number;
+    debateConsistency: number;
+    penalties: number;
+  };
 };
 
 type Input = {
@@ -73,7 +79,18 @@ function scoreByWinner(rounds: DebateRound[]): { home: number; away: number } {
   );
 }
 
-function calculateTrustScore(input: Input): number {
+function safeDiffNorm(a: number, b: number, divisor: number): number {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+  return clamp(Math.abs(a - b) / Math.max(divisor, 0.0001), 0, 1);
+}
+
+function calculateTrustScore(
+  input: Input,
+  rounds: DebateRound[]
+): {
+  score: number;
+  breakdown: DebateVerdict['trustBreakdown'];
+} {
   const avgConfidence = (input.homeTeamConfidence + input.awayTeamConfidence) / 2;
   const rosterCoverage = clamp((input.homeRosterCount + input.awayRosterCount) / 24, 0, 1);
   const statsSignals = [
@@ -88,14 +105,44 @@ function calculateTrustScore(input: Input): number {
   ];
   const availableSignals = statsSignals.filter((value) => Number.isFinite(value) && value > 0).length;
   const statsCoverage = availableSignals / statsSignals.length;
+  const dataQualityRaw =
+    clamp((avgConfidence / 100) * 22, 0, 22) +
+    clamp(rosterCoverage * 10, 0, 10) +
+    clamp(statsCoverage * 8, 0, 8);
+  const dataQuality = Math.round(dataQualityRaw);
 
-  let score = 40;
-  score += avgConfidence * 0.28;
-  score += rosterCoverage * 18;
-  score += statsCoverage * 20;
-  score += input.sourceHealth === 'ok' ? 8 : -8;
-  if (input.warning) score -= 8;
-  return clamp(Math.round(score), 0, 100);
+  const homeWinPct = getWinPct(input.homeTeam);
+  const awayWinPct = getWinPct(input.awayTeam);
+  const homeRecentWins = getRecentWins(input.homeTeam);
+  const awayRecentWins = getRecentWins(input.awayTeam);
+  const separationSignals = [
+    safeDiffNorm(homeWinPct, awayWinPct, 0.35),
+    safeDiffNorm(input.homeTeam.stats.offensiveRating, input.awayTeam.stats.offensiveRating, 12),
+    safeDiffNorm(input.homeTeam.stats.defensiveRating, input.awayTeam.stats.defensiveRating, 12),
+    safeDiffNorm(input.homeTeam.stats.pace, input.awayTeam.stats.pace, 8),
+    safeDiffNorm(homeRecentWins, awayRecentWins, 10),
+  ];
+  const matchupSeparation = Math.round((separationSignals.reduce((s, x) => s + x, 0) / separationSignals.length) * 35);
+
+  const roundScore = scoreByWinner(rounds);
+  const roundMargin = Math.abs(roundScore.home - roundScore.away);
+  const debateConsistency = Math.round(clamp((roundMargin / Math.max(1, rounds.length)) * 25, 0, 25));
+
+  let penalties = 0;
+  if (input.sourceHealth !== 'ok') penalties -= 12;
+  if (input.warning) penalties -= 8;
+  if (rosterCoverage < 0.6) penalties -= 6;
+
+  const score = clamp(Math.round(dataQuality + matchupSeparation + debateConsistency + penalties), 0, 100);
+  return {
+    score,
+    breakdown: {
+      dataQuality,
+      matchupSeparation,
+      debateConsistency,
+      penalties,
+    },
+  };
 }
 
 function formatRoundWinner(winner: DebateWinner): string {
@@ -176,7 +223,8 @@ export function buildPredictionDebate(input: Input): { rounds: DebateRound[]; ve
   ];
 
   const score = scoreByWinner(rounds);
-  const trustScore = calculateTrustScore(input);
+  const trust = calculateTrustScore(input, rounds);
+  const trustScore = trust.score;
   const rosterCoverageOk = input.homeRosterCount >= 8 && input.awayRosterCount >= 8;
   const label: DebateVerdict['label'] = trustScore >= 70 && rosterCoverageOk ? 'CONFIAVEL' : 'NAO CONFIAVEL';
   const winner: DebateWinner = score.home === score.away ? 'draw' : score.home > score.away ? 'home' : 'away';
@@ -203,6 +251,7 @@ export function buildPredictionDebate(input: Input): { rounds: DebateRound[]; ve
       winner,
       summary,
       reasons,
+      trustBreakdown: trust.breakdown,
     },
   };
 }

@@ -121,6 +121,7 @@ export async function POST(request: Request) {
   }
 
   const verdict = data.finalVerdict;
+  const clientSummary = data.clientSummary;
   const topRounds = (data.debateRounds || []).slice(0, 3).map((round: any) => `${round.title}: ${round.verification}`);
   const home = data.game?.homeTeam?.abbreviation || 'HOME';
   const away = data.game?.awayTeam?.abbreviation || 'AWAY';
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
   let answer = '';
 
   if (intent === 'probability') {
-    answer = `${bettingPrefix}Embate ${away} @ ${home}: trust score ${verdict.trustScore}/100, selo ${verdict.label}. Vencedor tecnico atual: ${verdict.winner}. Evidencias: ${topRounds.join(' | ')}.`;
+    answer = `${bettingPrefix}${away} @ ${home}: confiança ${verdict.trustScore}/100 (${verdict.label}). ${clientSummary?.recommendation || ''} Risco: ${clientSummary?.riskLevel || 'medio'}. Evidências: ${topRounds.join(' | ')}.`;
   } else if (intent === 'trend') {
     const homeRecent = data.teamSpecialists?.home?.explainability?.factors?.find((x: string) => x.includes('Record')) || 'Sem fator de record';
     const awayRecent = data.teamSpecialists?.away?.explainability?.factors?.find((x: string) => x.includes('Record')) || 'Sem fator de record';
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
     const warnings = verdict.reasons?.join(' | ') || 'Sem riscos adicionais mapeados';
     answer = `${away} @ ${home}: riscos atuais -> ${warnings}. Se houver mudanca de status de jogador ou line movement, o selo pode mudar rapidamente.`;
   } else {
-    answer = `${away} @ ${home}: ${verdict.summary} Trust score ${verdict.trustScore}/100 (${verdict.label}). Rodadas-chave: ${topRounds.join(' | ')}.`;
+    answer = `${away} @ ${home}: ${clientSummary?.recommendation || verdict.summary} Confiança ${verdict.trustScore}/100 (${verdict.label}). Risco ${clientSummary?.riskLevel || 'medio'}.`;
   }
 
   console.info(`[PREDICTIONS_CHAT_INTENT_RESOLVED] intent=${intent} gameId=${gameId}`);

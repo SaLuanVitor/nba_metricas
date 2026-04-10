@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Next.js Application
   app:
@@ -8,11 +6,20 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=production
       - USE_MOCK_DATA=${USE_MOCK_DATA:-false}
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/nba_metricas
-      - SPORTSDATA_API_KEY=${SPORTSDATA_API_KEY:-}
+      - NBA_STATS_BASE_URL=${NBA_STATS_BASE_URL:-https://stats.nba.com/stats}
+      - NBA_STATS_USER_AGENT=${NBA_STATS_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36}
+      - NBA_STATS_REFERER=${NBA_STATS_REFERER:-https://www.nba.com/}
+      - NBA_STATS_TIMEOUT_MS=${NBA_STATS_TIMEOUT_MS:-10000}
+      - BALLDONTLIE_API_KEY=${BALLDONTLIE_API_KEY:-}
+      - BOLTODDS_API_KEY=${BOLTODDS_API_KEY:-}
+      - STATUS_CONFIDENCE_MIN_SAFE=${STATUS_CONFIDENCE_MIN_SAFE:-70}
+      - STATUS_CONFIDENCE_TARGET=${STATUS_CONFIDENCE_TARGET:-80}
       - REDIS_URL=redis://redis-cache:6379
     depends_on:
       db:

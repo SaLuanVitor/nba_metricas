@@ -2,6 +2,7 @@ import { generateProjection } from '@/lib/ai/engine';
 import type { DataProvider, GameDTO, PlayerStatsPayload, ProviderResponse, UpstreamErrorCode } from '@/lib/providers/provider-types';
 import type { Player, PlayerStats, TeamWithStats } from '@/lib/types';
 import { getConferenceByAbbreviation } from '@/lib/nba/team-metadata';
+import { playerHeadshotUrl, teamLogoUrl } from '@/lib/media/nba-images';
 
 type AnyRecord = Record<string, any>;
 type ResultSet = { name?: string; headers?: string[]; rowSet?: any[] };
@@ -331,6 +332,7 @@ export class NBAStatsProvider implements DataProvider {
           steals: toNumber(stats.STL),
           blocks: toNumber(stats.BLK),
           turnovers: toNumber(stats.TOV),
+          fouls: toNumber(stats.PF),
         };
 
         const firstName = String(row.DISPLAY_FIRST_LAST || stats.PLAYER_NAME || '').split(' ').slice(0, -1).join(' ').trim();
@@ -355,6 +357,7 @@ export class NBAStatsProvider implements DataProvider {
             id: String(stats.TEAM_ID || row.TEAM_ID || abbreviation.toLowerCase()),
             name: String(stats.TEAM_NAME || row.TEAM_NAME || abbreviation),
             abbreviation,
+            logoUrl: teamLogoUrl({ id: String(stats.TEAM_ID || row.TEAM_ID || ''), abbreviation }),
             city: String(row.TEAM_CITY || ''),
             conference: getConferenceByAbbreviation(abbreviation) || 'East',
             division: 'Unknown',
@@ -366,7 +369,7 @@ export class NBAStatsProvider implements DataProvider {
           age: toNumber(row.AGE, 27),
           experience: toNumber(row.EXP, 1),
           college: String(row.SCHOOL || 'N/A'),
-          imageUrl: '',
+          imageUrl: playerHeadshotUrl(String(idNum)),
           seasonStats,
           last5Games: [],
           projection: {
@@ -411,6 +414,7 @@ export class NBAStatsProvider implements DataProvider {
         steals: toNumber(g.steals),
         blocks: toNumber(g.blocks),
         turnovers: toNumber(g.turnovers),
+        fouls: toNumber(g.fouls),
       }));
       const enrichedProjection = generateProjection(player);
       player.projection = {
@@ -459,6 +463,7 @@ export class NBAStatsProvider implements DataProvider {
       steals: toNumber(row.STL),
       blocks: toNumber(row.BLK),
       turnovers: toNumber(row.TOV),
+      fouls: toNumber(row.PF),
       matchup: String(row.MATCHUP || ''),
     }));
 
@@ -475,6 +480,7 @@ export class NBAStatsProvider implements DataProvider {
         steals: list.reduce((s, x) => s + x.steals, 0) / size,
         blocks: list.reduce((s, x) => s + x.blocks, 0) / size,
         turnovers: list.reduce((s, x) => s + x.turnovers, 0) / size,
+        fouls: list.reduce((s, x) => s + x.fouls, 0) / size,
       };
     };
 
@@ -555,12 +561,14 @@ export class NBAStatsProvider implements DataProvider {
             abbreviation: String(home.TEAM_ABBREVIATION || 'HOME'),
             name: String(home.TEAM_NAME || home.TEAM_CITY_NAME || 'Home'),
             city: String(home.TEAM_CITY_NAME || ''),
+            logoUrl: teamLogoUrl({ id: String(row.HOME_TEAM_ID || home.TEAM_ID || ''), abbreviation: String(home.TEAM_ABBREVIATION || 'HOME') }),
           },
           awayTeam: {
             id: String(row.VISITOR_TEAM_ID || away.TEAM_ID || ''),
             abbreviation: String(away.TEAM_ABBREVIATION || 'AWAY'),
             name: String(away.TEAM_NAME || away.TEAM_CITY_NAME || 'Away'),
             city: String(away.TEAM_CITY_NAME || ''),
+            logoUrl: teamLogoUrl({ id: String(row.VISITOR_TEAM_ID || away.TEAM_ID || ''), abbreviation: String(away.TEAM_ABBREVIATION || 'AWAY') }),
           },
           homeScore: toNumber(home.PTS),
           awayScore: toNumber(away.PTS),
@@ -735,6 +743,7 @@ export class NBAStatsProvider implements DataProvider {
         id: teamId,
         name,
         abbreviation,
+        logoUrl: teamLogoUrl({ id: teamId, abbreviation }),
         city: String(name.split(' ').slice(0, -1).join(' ') || ''),
         conference,
         division: String(standing?.Division ?? standing?.DIVISION ?? 'Unknown'),

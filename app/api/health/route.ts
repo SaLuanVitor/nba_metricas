@@ -7,6 +7,8 @@ export async function GET() {
   const hasBoltOdds = Boolean(process.env.BOLTODDS_API_KEY);
   const dbHealth = await getPgHealth();
   const hasAiChat = true;
+  const hasAuthSecret = Boolean(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET);
+  const hasMasterBootstrap = Boolean(process.env.MASTER_EMAIL && process.env.MASTER_PASSWORD);
   const isDev = (process.env.NODE_ENV || 'development') !== 'production';
 
   const providerStatus = {
@@ -15,6 +17,7 @@ export async function GET() {
     boltodds: hasBoltOdds ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     'odds-market': hasBoltOdds ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     database: dbHealth === 'configured' ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
+    auth: hasAuthSecret && hasMasterBootstrap ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     'ai-chat': hasAiChat ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
   };
 
