@@ -36,24 +36,33 @@ const TEAM_ID_BY_ABBR: Record<string, string> = {
   WAS: '1610612764',
 };
 
-const TEAM_LOGO_BASE_URL = 'https://cdn.nba.com/logos/nba';
+const TEAM_ABBR_BY_ID: Record<string, string> = Object.entries(TEAM_ID_BY_ABBR).reduce<Record<string, string>>(
+  (acc, [abbr, id]) => {
+    acc[id] = abbr;
+    return acc;
+  },
+  {}
+);
+
+const TEAM_LOGO_BASE_URL = 'https://a.espncdn.com/i/teamlogos/nba/500';
 const PLAYER_HEADSHOT_BASE_URL = 'https://cdn.nba.com/headshots/nba/latest/1040x760';
 
 export const TEAM_LOGO_FALLBACK = '/team-default.svg';
 export const PLAYER_IMAGE_FALLBACK = '/player-default.jpg';
 
-function resolveTeamId(team?: TeamLike): string | null {
+function resolveTeamAbbreviation(team?: TeamLike): string | null {
+  const rawAbbr = String(team?.abbreviation || '').trim().toUpperCase();
+  if (rawAbbr && TEAM_ID_BY_ABBR[rawAbbr]) return rawAbbr;
   const rawId = String(team?.id || '').trim();
-  if (/^\d+$/.test(rawId)) return rawId;
+  if (/^\d+$/.test(rawId) && TEAM_ABBR_BY_ID[rawId]) return TEAM_ABBR_BY_ID[rawId];
   const abbr = String(team?.abbreviation || '').trim().toUpperCase();
-  if (!abbr) return null;
-  return TEAM_ID_BY_ABBR[abbr] || null;
+  return abbr || null;
 }
 
 export function teamLogoUrl(team?: TeamLike): string {
-  const teamId = resolveTeamId(team);
-  if (!teamId) return TEAM_LOGO_FALLBACK;
-  return `${TEAM_LOGO_BASE_URL}/${teamId}/global/L/logo.svg`;
+  const abbreviation = resolveTeamAbbreviation(team);
+  if (!abbreviation) return TEAM_LOGO_FALLBACK;
+  return `${TEAM_LOGO_BASE_URL}/${abbreviation.toLowerCase()}.png`;
 }
 
 export function playerHeadshotUrl(playerId?: string | number | null): string {
@@ -67,4 +76,3 @@ export function withPlayerHeadshotFallback(imageUrl: string | undefined | null, 
   if (current) return current;
   return playerHeadshotUrl(playerId);
 }
-
