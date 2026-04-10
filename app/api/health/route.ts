@@ -21,6 +21,14 @@ export async function GET() {
     'ai-chat': hasAiChat ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
   };
 
+  const missingRequiredEnv = [
+    !process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET ? 'AUTH_SECRET' : null,
+    !process.env.MASTER_EMAIL ? 'MASTER_EMAIL' : null,
+    !process.env.MASTER_PASSWORD ? 'MASTER_PASSWORD' : null,
+    !process.env.DATABASE_URL ? 'DATABASE_URL' : null,
+    !process.env.BALLDONTLIE_API_KEY ? 'BALLDONTLIE_API_KEY' : null,
+  ].filter(Boolean) as string[];
+
   return NextResponse.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -31,6 +39,11 @@ export async function GET() {
       cache: 'ok',
       externalApi: hasNBAStats || hasBallDontLie || hasBoltOdds ? 'ok' : 'degraded',
       providers: providerStatus,
+    },
+    missingRequiredEnv,
+    deploymentHints: {
+      platform: process.env.RAILWAY_ENVIRONMENT ? 'railway' : 'generic',
+      hasRailwayEnv: Boolean(process.env.RAILWAY_ENVIRONMENT),
     },
     environment: process.env.NODE_ENV || 'development',
   });
