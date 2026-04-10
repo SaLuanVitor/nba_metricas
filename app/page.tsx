@@ -97,9 +97,14 @@ export default function Dashboard() {
   }, [games]);
 
   const todayProjectedPlayers = useMemo(() => {
-    return players
-      .filter((p: any) => todayGameTeamAbbrs.has(String(p?.team?.abbreviation || '').toUpperCase()))
-      .sort((a: any, b: any) => Number(b?.projection?.projectedPoints || 0) - Number(a?.projection?.projectedPoints || 0));
+    const hasTodayTeams = todayGameTeamAbbrs.size > 0;
+    const base = hasTodayTeams
+      ? players.filter((p: any) => todayGameTeamAbbrs.has(String(p?.team?.abbreviation || '').toUpperCase()))
+      : players;
+
+    return [...base].sort(
+      (a: any, b: any) => Number(b?.projection?.projectedPoints || 0) - Number(a?.projection?.projectedPoints || 0)
+    );
   }, [players, todayGameTeamAbbrs]);
 
   const todayHotPlayers = useMemo(() => {
@@ -135,6 +140,18 @@ export default function Dashboard() {
       return teamOk && positionOk;
     });
   }, [todayProjectedPlayers, teamFilter, positionFilter]);
+
+  useEffect(() => {
+    if (teamFilter !== 'all' && !todayTeamOptions.includes(teamFilter)) {
+      setTeamFilter('all');
+    }
+  }, [teamFilter, todayTeamOptions]);
+
+  useEffect(() => {
+    if (positionFilter !== 'all' && !todayPositionOptions.includes(positionFilter)) {
+      setPositionFilter('all');
+    }
+  }, [positionFilter, todayPositionOptions]);
 
   return (
     <div className="space-y-6">
