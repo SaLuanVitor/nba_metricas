@@ -1,0 +1,73 @@
+name: Health Checks
+
+on:
+  schedule:
+    # Check every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  # ============================================
+  # DATABASE HEALTH
+  # ============================================
+  db-health:
+    name: Database Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check database connection
+        run: |
+          curl -f -s https://api.nba_metricas.com/api/health/db || exit 1
+
+  # ============================================
+  # CACHE HEALTH
+  # ============================================
+  cache-health:
+    name: Cache Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Redis connection
+        run: |
+          curl -f -s https://api.nba_metricas.com/api/health/cache || exit 1
+
+  # ============================================
+  # EXTERNAL API HEALTH
+  # ============================================
+  external-api-health:
+    name: External API Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check NBA API connectivity
+        run: |
+          curl -f -s https://api.nba_metricas.com/api/health/external || exit 1
+
+  # ============================================
+  # OVERALL HEALTH
+  # ============================================
+  overall-health:
+    name: Overall Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check overall health
+        run: |
+          response=$(curl -s https://api.nba_metricas.com/api/health)
+          echo "$response" | jq '.'
+          
+          status=$(echo "$response" | jq -r '.status')
+          if [ "$status" != "healthy" ]; then
+            echo "System is not healthy!"
+            exit 1
+          fi
+
+  # ============================================
+  # ALERTING
+  # ============================================
+  alert-on-failure:
+    name: Alert on Failure
+    runs-on: ubuntu-latest
+    needs: [db-health, cache-health, external-api-health, overall-health]
+    if: always() && (needs.db-health.result != 'success' || needs.cache-health.result != 'success' || needs.external-api-health.result != 'success' || needs.overall-health.result != 'success')
+    steps:
+      - name: Send alert
+        run: |
+          echo "Health check failed! Immediate attention required."
+          # Add PagerDuty/Slack/Discord alerting here
