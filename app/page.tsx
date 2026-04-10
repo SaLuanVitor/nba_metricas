@@ -19,6 +19,8 @@ export default function Dashboard() {
     sourceHealth: 'degraded' as 'ok' | 'degraded',
   });
   const [loading, setLoading] = useState(true);
+  const [teamFilter, setTeamFilter] = useState('all');
+  const [positionFilter, setPositionFilter] = useState('all');
 
   useEffect(() => {
     async function fetchData() {
@@ -106,6 +108,34 @@ export default function Dashboard() {
       .sort((a: any, b: any) => Number(b?.projection?.confidence || 0) - Number(a?.projection?.confidence || 0));
   }, [todayProjectedPlayers]);
 
+  const todayTeamOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        todayProjectedPlayers
+          .map((p: any) => String(p?.team?.abbreviation || '').toUpperCase())
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [todayProjectedPlayers]);
+
+  const todayPositionOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        todayProjectedPlayers
+          .map((p: any) => String(p?.position || '').toUpperCase())
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [todayProjectedPlayers]);
+
+  const todayProjectedPlayersFiltered = useMemo(() => {
+    return todayProjectedPlayers.filter((p: any) => {
+      const teamOk = teamFilter === 'all' || String(p?.team?.abbreviation || '').toUpperCase() === teamFilter;
+      const positionOk = positionFilter === 'all' || String(p?.position || '').toUpperCase() === positionFilter;
+      return teamOk && positionOk;
+    });
+  }, [todayProjectedPlayers, teamFilter, positionFilter]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -192,11 +222,33 @@ export default function Dashboard() {
           <p className="text-xs text-muted-foreground mb-3">
             Todos os jogadores dos confrontos de hoje (ao vivo e programados).
           </p>
-          {!todayProjectedPlayers.length && (
+          <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="all">Todos os times</option>
+              {todayTeamOptions.map((team) => (
+                <option key={team} value={team}>{team}</option>
+              ))}
+            </select>
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="all">Todas as posições</option>
+              {todayPositionOptions.map((position) => (
+                <option key={position} value={position}>{position}</option>
+              ))}
+            </select>
+          </div>
+          {!todayProjectedPlayersFiltered.length && (
             <p className="text-sm text-muted-foreground">Sem projeções disponíveis para os jogos do dia.</p>
           )}
           <div className="max-h-[360px] overflow-auto space-y-2 pr-1">
-            {todayProjectedPlayers.map((player: any) => (
+            {todayProjectedPlayersFiltered.map((player: any) => (
               <div key={player.id} className="flex items-center justify-between rounded border px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <PlayerAvatar
