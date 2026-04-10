@@ -6,6 +6,15 @@ import path from 'path';
 import { getBoltOddsNBAGamesToday } from '@/lib/odds-api/boltodds';
 import { getLocalISODate } from '@/lib/date-utils';
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/media/nba-images';
+import {
+  canAttempt,
+  consumeBudget,
+  observeUpstreamCall,
+  observeUpstreamError,
+  recordFailure,
+  recordLatency,
+  recordSuccess,
+} from '@/lib/resilience/control';
 
 const BALLDONTLIE_BASE_URL = 'https://api.balldontlie.io/v1';
 
@@ -49,6 +58,10 @@ const MAX_PLAYER_PAGES_COLD = Math.max(1, Number(process.env.BALLDONTLIE_MAX_PLA
 const MAX_PLAYER_PAGES_WARM = Math.max(1, Number(process.env.BALLDONTLIE_MAX_PLAYER_PAGES_WARM || 2));
 const SEASON_AVERAGES_CHUNK_SIZE = Math.min(100, Math.max(25, Number(process.env.BALLDONTLIE_SEASON_AVG_CHUNK_SIZE || 100)));
 const UPSTREAM_COOLDOWN_MS = 90_000;
+const BALLDONTLIE_RATE_LIMIT_COOLDOWN_MS = Math.max(
+  60_000,
+  Number(process.env.BALLDONTLIE_RATE_LIMIT_COOLDOWN_MS || 300_000)
+);
 const playersCacheBySeason = new Map<number, CacheEntry<Player[]>>();
 const playersCacheMetaBySeason = new Map<number, PlayersCacheMetadata>();
 const playersCooldownBySeason = new Map<number, number>();
@@ -56,6 +69,7 @@ let teamsCache: CacheEntry<TeamWithStats[]> | null = null;
 const playersInflightBySeason = new Map<number, Promise<ProviderResult<Player[]>>>();
 let teamsInflight: Promise<ProviderResult<TeamWithStats[]>> | null = null;
 const PERSISTED_CACHE_FILE = path.join(process.cwd(), '.cache', 'balldontlie-cache.json');
+let balldontlieRateLimitedUntil = 0;
 
 let persistedCacheLoaded = false;
 
@@ -195,7 +209,11 @@ function logUpstream(endpoint: string, code: UpstreamErrorCode, details: string)
 }
 
 function shouldRetry(code: UpstreamErrorCode): boolean {
-  return code === 'UPSTREAM_TIMEOUT' || code === 'UPSTREAM_RATE_LIMIT' || code === 'UPSTREAM_UNAVAILABLE';
+  return code === 'UPSTREAM_TIMEOUT' || code === 'UPSTREAM_UNAVAILABLE';
+}
+
+function logicalEndpoint(endpoint: string): string {
+  return String(endpoint || '').replace(/^\//, '').toLowerCase() || 'unknown';
 }
 
 async function requestBallDontLie<T = any>(
@@ -211,9 +229,42 @@ async function requestBallDontLie<T = any>(
     return { data: [] as T, source: 'none', warning, errorCode: 'UPSTREAM_UNAUTHORIZED' };
   }
 
+  if (Date.now() < balldontlieRateLimitedUntil) {
+    const waitMs = balldontlieRateLimitedUntil - Date.now();
+    return {
+      data: [] as T,
+      source: 'none',
+      warning: `BallDontLie cooldown active after rate limit (${Math.ceil(waitMs / 1000)}s remaining)`,
+      errorCode: 'UPSTREAM_RATE_LIMIT',
+    };
+  }
+
+  const endpointName = logicalEndpoint(endpoint);
+  const breaker = canAttempt('balldontlie', endpointName);
+  if (!breaker.allowed) {
+    return {
+      data: [] as T,
+      source: 'none',
+      warning: `BallDontLie circuit ${breaker.state}; request skipped (${breaker.reason || 'blocked'})`,
+      errorCode: 'UPSTREAM_UNAVAILABLE',
+    };
+  }
+
+  const budget = consumeBudget('balldontlie', endpointName);
+  if (!budget.allowed) {
+    return {
+      data: [] as T,
+      source: 'none',
+      warning: 'BallDontLie rate budget exhausted for current minute',
+      errorCode: 'UPSTREAM_RATE_LIMIT',
+    };
+  }
+
   let attempt = 0;
   while (attempt <= retries) {
+    const startedAt = Date.now();
     try {
+      observeUpstreamCall('balldontlie', endpointName);
       const response = await axios.get(`${BALLDONTLIE_BASE_URL}${endpoint}`, {
         params,
         timeout: 10000,
@@ -222,9 +273,20 @@ async function requestBallDontLie<T = any>(
           'X-API-KEY': normalizedApiKey,
         },
       });
+      recordLatency(`balldontlie:${endpointName}`, Date.now() - startedAt);
+      recordSuccess('balldontlie', endpointName);
       return { data: response.data as T, source: 'balldontlie' };
     } catch (error: any) {
       const { code, message } = classifyUpstreamError(error);
+      observeUpstreamError('balldontlie', endpointName, code);
+      recordFailure('balldontlie', endpointName, code);
+      recordLatency(`balldontlie:${endpointName}`, Date.now() - startedAt);
+      if (code === 'UPSTREAM_RATE_LIMIT') {
+        balldontlieRateLimitedUntil = Math.max(
+          balldontlieRateLimitedUntil,
+          Date.now() + BALLDONTLIE_RATE_LIMIT_COOLDOWN_MS
+        );
+      }
       const isLastAttempt = attempt >= retries || !shouldRetry(code);
       logUpstream(endpoint, code, `attempt=${attempt + 1} ${message}`);
       if (isLastAttempt) {

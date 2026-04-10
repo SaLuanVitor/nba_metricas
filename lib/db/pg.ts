@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 let pool: Pool | null = null;
 let initialized = false;
 let authInitialized = false;
+let snapshotsInitialized = false;
 
 function getPool(): Pool | null {
   const connectionString = process.env.DATABASE_URL;
@@ -97,6 +98,52 @@ export async function ensureAuthTables(): Promise<boolean> {
   `);
 
   authInitialized = true;
+  return true;
+}
+
+export async function ensureDataSnapshotsTable(): Promise<boolean> {
+  const p = getPool();
+  if (!p) return false;
+  if (snapshotsInitialized) return true;
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS data_snapshots (
+      id BIGSERIAL PRIMARY KEY,
+      domain VARCHAR(64) NOT NULL,
+      cache_key VARCHAR(255) NOT NULL,
+      season VARCHAR(16) NULL,
+      date_ref VARCHAR(16) NULL,
+      payload_jsonb JSONB NOT NULL,
+      source VARCHAR(32) NOT NULL DEFAULT 'none',
+      source_health VARCHAR(16) NOT NULL DEFAULT 'degraded',
+      cache_status VARCHAR(16) NOT NULL DEFAULT 'rejected',
+      error_code VARCHAR(64) NULL,
+      coverage NUMERIC(6,4) NULL,
+      captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      is_last_good BOOLEAN NOT NULL DEFAULT FALSE
+    );
+  `);
+
+  await p.query(`
+    CREATE INDEX IF NOT EXISTS idx_data_snapshots_domain_cache_key
+    ON data_snapshots (domain, cache_key);
+  `);
+  await p.query(`
+    CREATE INDEX IF NOT EXISTS idx_data_snapshots_domain_expires_at
+    ON data_snapshots (domain, expires_at DESC);
+  `);
+  await p.query(`
+    CREATE INDEX IF NOT EXISTS idx_data_snapshots_captured_at
+    ON data_snapshots (captured_at DESC);
+  `);
+  await p.query(`
+    CREATE INDEX IF NOT EXISTS idx_data_snapshots_last_good
+    ON data_snapshots (domain, cache_key, captured_at DESC)
+    WHERE is_last_good = TRUE;
+  `);
+
+  snapshotsInitialized = true;
   return true;
 }
 

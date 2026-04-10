@@ -3,6 +3,15 @@ import type { DataProvider, GameDTO, PlayerStatsPayload, ProviderResponse, Upstr
 import type { Player, PlayerStats, TeamWithStats } from '@/lib/types';
 import { getConferenceByAbbreviation } from '@/lib/nba/team-metadata';
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/media/nba-images';
+import {
+  canAttempt,
+  consumeBudget,
+  observeUpstreamCall,
+  observeUpstreamError,
+  recordFailure,
+  recordLatency,
+  recordSuccess,
+} from '@/lib/resilience/control';
 
 type AnyRecord = Record<string, any>;
 type ResultSet = { name?: string; headers?: string[]; rowSet?: any[] };
@@ -217,11 +226,34 @@ export class NBAStatsProvider implements DataProvider {
   private readonly appTimezone = process.env.APP_TIMEZONE || 'America/Bahia';
 
   private async request(endpoint: string, params: Record<string, string | number>): Promise<ProviderResponse<AnyRecord>> {
+    const endpointName = String(endpoint || '').toLowerCase();
+    const breaker = canAttempt('nba-stats', endpointName);
+    if (!breaker.allowed) {
+      return {
+        data: {},
+        source: 'none',
+        warning: `NBA Stats circuit ${breaker.state}; request skipped (${breaker.reason || 'blocked'})`,
+        errorCode: 'UPSTREAM_UNAVAILABLE',
+      };
+    }
+
+    const budget = consumeBudget('nba-stats', endpointName);
+    if (!budget.allowed) {
+      return {
+        data: {},
+        source: 'none',
+        warning: 'NBA Stats rate budget exhausted for current minute',
+        errorCode: 'UPSTREAM_RATE_LIMIT',
+      };
+    }
+
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => query.set(k, String(v)));
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const startedAt = Date.now();
     try {
+      observeUpstreamCall('nba-stats', endpointName);
       const response = await fetch(`${this.baseUrl}/${endpoint}?${query.toString()}`, {
         headers: {
           Accept: 'application/json, text/plain, */*',
@@ -235,21 +267,31 @@ export class NBAStatsProvider implements DataProvider {
         signal: controller.signal,
       });
       if (!response.ok) {
+        const code = classifyStatus(response.status);
+        observeUpstreamError('nba-stats', endpointName, code);
+        recordFailure('nba-stats', endpointName, code);
+        recordLatency(`nba-stats:${endpointName}`, Date.now() - startedAt);
         return {
           data: {},
           source: 'none',
           warning: `NBA Stats unavailable (status ${response.status})`,
-          errorCode: classifyStatus(response.status),
+          errorCode: code,
         };
       }
       const json = await response.json();
+      recordSuccess('nba-stats', endpointName);
+      recordLatency(`nba-stats:${endpointName}`, Date.now() - startedAt);
       return { data: json, source: 'nba-stats' };
     } catch (error: any) {
+      const code = error?.name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_BAD_RESPONSE';
+      observeUpstreamError('nba-stats', endpointName, code);
+      recordFailure('nba-stats', endpointName, code);
+      recordLatency(`nba-stats:${endpointName}`, Date.now() - startedAt);
       return {
         data: {},
         source: 'none',
         warning: `NBA Stats unavailable (${error?.name === 'AbortError' ? 'timeout' : (error?.message || 'network error')})`,
-        errorCode: error?.name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_BAD_RESPONSE',
+        errorCode: code,
       };
     } finally {
       clearTimeout(timer);

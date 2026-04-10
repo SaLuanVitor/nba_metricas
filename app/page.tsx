@@ -1,5 +1,5 @@
 ﻿'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatCard } from "@/components/stat-card"
 import { TopPlayersList } from "@/components/top-players-list"
 import { TrendingPlayers } from "@/components/trending-players"
@@ -21,47 +21,76 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState('all');
   const [positionFilter, setPositionFilter] = useState('all');
+  const [errorStreak, setErrorStreak] = useState(0);
+
+  const liveGamesCount = data.games.filter((g: any) => isGameLive(g)).length;
+  const pollIntervalMs = useMemo(() => {
+    const hasLive = liveGamesCount > 0;
+    const base = data.sourceHealth === 'degraded'
+      ? (hasLive ? 60_000 : 120_000)
+      : (hasLive ? 30_000 : 60_000);
+    const backoffMultiplier = Math.min(4, Math.max(1, errorStreak + 1));
+    return base * backoffMultiplier;
+  }, [data.sourceHealth, liveGamesCount, errorStreak]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [playersRes, gamesRes] = await Promise.all([
+        fetch('/api/players', { cache: 'no-store' }),
+        fetch('/api/games/today', { cache: 'no-store' }),
+      ]);
+
+      const playersData = playersRes.ok ? await playersRes.json() : null;
+      const gamesData = gamesRes.ok ? await gamesRes.json() : null;
+
+      setData((prev) => {
+        const nextPlayers = (playersData?.data?.length || 0) > 0
+          ? playersData.data
+          : prev.players;
+
+        return {
+          players: nextPlayers,
+          games: gamesData?.data || [],
+          lastUpdate: new Date(),
+          source: playersData?.source || gamesData?.source || 'none',
+          queryDate: gamesData?.date || '',
+          gameDate: gamesData?.date || '',
+          timezone: gamesData?.timezone || prev.timezone || 'America/Bahia',
+          sourceHealth: playersData?.sourceHealth || 'degraded',
+        };
+      });
+      setErrorStreak(0);
+    } catch (err) {
+      console.error("Error fetching data", err);
+      setData(prev => ({ ...prev, sourceHealth: 'degraded' }));
+      setErrorStreak((prev) => Math.min(prev + 1, 4));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [playersRes, gamesRes] = await Promise.all([
-          fetch('/api/players', { cache: 'no-store' }),
-          fetch('/api/games/today', { cache: 'no-store' })
-        ]);
+    void fetchData();
+  }, [fetchData]);
 
-        // Check if responses are OK
-        const playersData = playersRes.ok ? await playersRes.json() : null;
-        const gamesData = gamesRes.ok ? await gamesRes.json() : null;
-
-        setData((prev) => {
-          const nextPlayers = (playersData?.data?.length || 0) > 0
-            ? playersData.data
-            : prev.players;
-
-          return {
-            players: nextPlayers,
-            games: gamesData?.data || [],
-            lastUpdate: new Date(),
-            source: playersData?.source || gamesData?.source || 'none',
-            queryDate: gamesData?.date || '',
-            gameDate: gamesData?.date || '',
-            timezone: gamesData?.timezone || prev.timezone || 'America/Bahia',
-            sourceHealth: playersData?.sourceHealth || 'degraded',
-          };
-        });
-      } catch (err) {
-        console.error("Error fetching data", err);
-        setData(prev => ({ ...prev, sourceHealth: 'degraded' }));
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return;
+      void fetchData();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchData();
       }
-    }
-    fetchData();
-    
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    };
+
+    const interval = setInterval(tick, pollIntervalMs);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [fetchData, pollIntervalMs]);
 
   if (loading) {
     return (
@@ -80,7 +109,7 @@ export default function Dashboard() {
     ? (players.reduce((acc: number, p: any) => acc + (p.projection?.projectedPoints || p.seasonStats?.points || 0), 0) / players.length).toFixed(1)
     : "0.0";
   
-  const liveGamesCount = games.filter((g: any) => isGameLive(g)).length;
+  const liveGamesCountDisplay = games.filter((g: any) => isGameLive(g)).length;
   const scheduledGamesCount = games.filter((g: any) => isGameScheduled(g)).length;
   const finishedGamesCount = games.filter((g: any) => isGameFinished(g)).length;
   const trendingUpCount = players.filter((p: any) => p.projection?.trend === 'up').length;
@@ -305,7 +334,7 @@ export default function Dashboard() {
         />
       )}
 
-      {liveGamesCount > 0 && (
+      {liveGamesCountDisplay > 0 && (
         <div className="border border-green-500/50 rounded-lg p-4 bg-green-900/10">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-green-500 animate-pulse" />
