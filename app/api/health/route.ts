@@ -13,6 +13,7 @@ export async function GET() {
     'nba-stats': hasNBAStats ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     balldontlie: hasBallDontLie ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     boltodds: hasBoltOdds ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
+    'odds-market': hasBoltOdds ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     database: dbHealth === 'configured' ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
     'ai-chat': hasAiChat ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
   };

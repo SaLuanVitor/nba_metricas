@@ -38,6 +38,12 @@ export type TeamWithStats = Team & {
     conference: number
     overall: number
   }
+  record?: {
+    winPct: number
+    gamesPlayed: number
+    last10: string
+    streak: string
+  }
 }
 
 export type PlayerStats = {

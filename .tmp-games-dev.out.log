@@ -1,0 +1,26 @@
+[32m✔[0m [33mConsole Ninja[0m extension is connected to [33mNext.js[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3013
+- Network:       http://192.168.56.1:3013
+- Environments: .env.local, .env
+✓ Ready in 26.3s
+⚠ Console Ninja Turbopack support is a PRO feature, [33mcurrently available to community users while in preview[0m
+Creating turbopack project { dir: 'E:\\Projetos\\nba_metricas', testMode: true }
+
+ GET /api/odds/games 200 in 5.1s (next.js: 1472ms, application-code: 3.6s)
+ GET /api/odds/movements 200 in 355ms (next.js: 345ms, application-code: 9ms)
+ GET /api/ai/accuracy?windowDays=7 200 in 1217ms (next.js: 58ms, application-code: 1159ms)
+=== PLAYERS API ===
+ GET /api/players 200 in 100ms (next.js: 63ms, application-code: 36ms)
+ GET /api/players/7096/probabilities 200 in 2.4s (next.js: 866ms, application-code: 1549ms)
+=== PLAYERS API ===
+ GET /api/players 200 in 25ms (next.js: 6ms, application-code: 20ms)
+ GET /api/players/1629029/probabilities 200 in 10.3s (next.js: 14ms, application-code: 10.3s)
+ GET /api/health 200 in 3.2s (next.js: 257ms, application-code: 3.0s)
+ POST /api/odds/collect 200 in 692ms (next.js: 680ms, application-code: 12ms)
+=== SYNC API ===
+Type: odds
+Syncing odds snapshots...
+Captured odds snapshots: inserted=0, total=0, parsed=0
+ POST /api/sync 200 in 454ms (next.js: 439ms, application-code: 16ms)
+ GET /api/odds/games 200 in 510ms (next.js: 139ms, application-code: 370ms)

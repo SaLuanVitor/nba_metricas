@@ -1,6 +1,7 @@
 import { generateProjection } from '@/lib/ai/engine';
 import type { DataProvider, GameDTO, PlayerStatsPayload, ProviderResponse, UpstreamErrorCode } from '@/lib/providers/provider-types';
 import type { Player, PlayerStats, TeamWithStats } from '@/lib/types';
+import { getConferenceByAbbreviation } from '@/lib/nba/team-metadata';
 
 type AnyRecord = Record<string, any>;
 type ResultSet = { name?: string; headers?: string[]; rowSet?: any[] };
@@ -62,6 +63,52 @@ function todayForScoreboard(dateISO?: string): string {
   const dd = String(d.getUTCDate()).padStart(2, '0');
   const yyyy = d.getUTCFullYear();
   return `${mm}/${dd}/${yyyy}`;
+}
+
+function statusRank(status: GameDTO['status']): number {
+  if (status === 'live') return 3;
+  if (status === 'final') return 2;
+  return 1;
+}
+
+function gameRichnessScore(game: GameDTO): number {
+  const scoreKnown = (game.homeScore > 0 || game.awayScore > 0) ? 2 : 0;
+  const timeKnown = game.gameTime && game.gameTime !== '--:--' ? 1 : 0;
+  return scoreKnown + timeKnown;
+}
+
+function buildWatchUrl(gameId: string): string | undefined {
+  if (!gameId) return undefined;
+  return `https://www.nba.com/game/${gameId}`;
+}
+
+function parseConference(raw: unknown, abbreviation?: string): TeamWithStats['conference'] {
+  const value = String(raw || '').toLowerCase();
+  if (value.includes('east')) return 'East';
+  if (value.includes('west')) return 'West';
+  return getConferenceByAbbreviation(abbreviation) || 'East';
+}
+
+function parseLast10Record(raw: unknown): { last10: string; games: ('W' | 'L')[] } {
+  const text = String(raw || '').trim();
+  const match = text.match(/(\d+)\s*-\s*(\d+)/);
+  if (!match) return { last10: '0-0', games: [] };
+  const wins = toNumber(match[1]);
+  const losses = toNumber(match[2]);
+  const games: ('W' | 'L')[] = [];
+  for (let i = 0; i < wins; i += 1) games.push('W');
+  for (let i = 0; i < losses; i += 1) games.push('L');
+  return { last10: `${wins}-${losses}`, games: games.slice(0, 10) };
+}
+
+function buildStreak(raw: unknown, fallbackGames: ('W' | 'L')[]): string {
+  const text = String(raw || '').trim();
+  if (/^[WL]\d+$/i.test(text)) return text.toUpperCase();
+  if (fallbackGames.length === 0) return 'N0';
+  const wins = fallbackGames.filter((result) => result === 'W').length;
+  const losses = Math.max(0, fallbackGames.length - wins);
+  if (wins === losses) return 'N0';
+  return wins > losses ? `W${wins - losses}` : `L${losses - wins}`;
 }
 
 function getOffsetMsForTimezone(date: Date, timeZone: string): number {
@@ -309,7 +356,7 @@ export class NBAStatsProvider implements DataProvider {
             name: String(stats.TEAM_NAME || row.TEAM_NAME || abbreviation),
             abbreviation,
             city: String(row.TEAM_CITY || ''),
-            conference: 'West',
+            conference: getConferenceByAbbreviation(abbreviation) || 'East',
             division: 'Unknown',
             primaryColor: colors.primaryColor,
             secondaryColor: colors.secondaryColor,
@@ -350,6 +397,31 @@ export class NBAStatsProvider implements DataProvider {
   async getPlayerById(playerId: string, season?: string): Promise<ProviderResponse<Player | null>> {
     const playersResult = await this.getPlayers(season);
     const player = playersResult.data.find((p) => p.id === String(playerId)) || null;
+    if (player) {
+      const statsResult = await this.getPlayerStats(playerId, season);
+      const last5 = Array.isArray(statsResult.data?.last5) ? statsResult.data!.last5 : [];
+      player.last5Games = last5.map((g: any) => ({
+        points: toNumber(g.points),
+        assists: toNumber(g.assists),
+        rebounds: toNumber(g.rebounds),
+        minutes: toNumber(g.minutes),
+        fieldGoalPercentage: toNumber(g.fieldGoalPercentage),
+        threePointPercentage: toNumber(g.threePointPercentage),
+        freeThrowPercentage: toNumber(g.freeThrowPercentage),
+        steals: toNumber(g.steals),
+        blocks: toNumber(g.blocks),
+        turnovers: toNumber(g.turnovers),
+      }));
+      const enrichedProjection = generateProjection(player);
+      player.projection = {
+        projectedPoints: enrichedProjection.projectedPoints,
+        projectedAssists: enrichedProjection.projectedAssists,
+        projectedRebounds: enrichedProjection.projectedRebounds,
+        projectedMinutes: enrichedProjection.projectedMinutes,
+        confidence: enrichedProjection.confidence,
+        trend: enrichedProjection.trend,
+      };
+    }
     return {
       data: player,
       source: playersResult.source,
@@ -429,61 +501,100 @@ export class NBAStatsProvider implements DataProvider {
   }
 
   async getGamesToday(dateISO?: string): Promise<ProviderResponse<GameDTO[]>> {
-    const scoreboardResult = await this.request('scoreboardv2', {
-      DayOffset: 0,
-      GameDate: todayForScoreboard(dateISO),
+    const offsets = [-1, 0, 1];
+    const baseGameDate = todayForScoreboard(dateISO);
+    const windowResults = await Promise.all(offsets.map((offset) => this.request('scoreboardv2', {
+      DayOffset: offset,
+      GameDate: baseGameDate,
       LeagueID: '00',
-    });
-    const headersRows = rowsFromResultSet(findResultSet(scoreboardResult.data, ['gameheader']));
-    const lineScoreRows = rowsFromResultSet(findResultSet(scoreboardResult.data, ['linescore']));
-    const lineByGame = new Map<string, AnyRecord[]>();
-    for (const row of lineScoreRows) {
-      const key = String(row.GAME_ID || '');
-      if (!lineByGame.has(key)) lineByGame.set(key, []);
-      lineByGame.get(key)!.push(row);
+    })));
+
+    const merged = new Map<string, GameDTO>();
+    let warning: string | undefined;
+    let errorCode: UpstreamErrorCode | undefined;
+
+    for (let i = 0; i < offsets.length; i++) {
+      const offset = offsets[i];
+      const scoreboardResult = windowResults[i];
+      if (!warning && scoreboardResult.warning) warning = scoreboardResult.warning;
+      if (!errorCode && scoreboardResult.errorCode) errorCode = scoreboardResult.errorCode;
+
+      const headersRows = rowsFromResultSet(findResultSet(scoreboardResult.data, ['gameheader']));
+      const lineScoreRows = rowsFromResultSet(findResultSet(scoreboardResult.data, ['linescore']));
+      const lineByGame = new Map<string, AnyRecord[]>();
+      for (const row of lineScoreRows) {
+        const key = String(row.GAME_ID || '');
+        if (!lineByGame.has(key)) lineByGame.set(key, []);
+        lineByGame.get(key)!.push(row);
+      }
+
+      for (const row of headersRows) {
+        const gameId = String(row.GAME_ID || '');
+        if (!gameId) continue;
+        const lines = lineByGame.get(gameId) || [];
+        const home = lines.find((l) => String(l.TEAM_ID) === String(row.HOME_TEAM_ID)) || lines[0] || {};
+        const away = lines.find((l) => String(l.TEAM_ID) === String(row.VISITOR_TEAM_ID)) || lines[1] || {};
+        const statusId = toNumber(row.GAME_STATUS_ID, 1);
+        const status: GameDTO['status'] = statusId === 3 ? 'final' : statusId === 2 ? 'live' : 'scheduled';
+        const statusText = String(row.GAME_STATUS_TEXT || '');
+        const gameDate = String(row.GAME_DATE_EST || dateISO || '');
+        const displayGameTime = status === 'scheduled'
+          ? toLocal24hFromEt(gameDate, statusText, this.appTimezone)
+          : statusText;
+
+        const candidate: GameDTO = {
+          id: gameId,
+          gameId,
+          status,
+          GameStatus: status === 'final' ? 3 : status === 'live' ? 2 : 1,
+          date: gameDate,
+          gameTime: displayGameTime,
+          watchUrl: buildWatchUrl(gameId),
+          homeTeam: {
+            id: String(row.HOME_TEAM_ID || home.TEAM_ID || ''),
+            abbreviation: String(home.TEAM_ABBREVIATION || 'HOME'),
+            name: String(home.TEAM_NAME || home.TEAM_CITY_NAME || 'Home'),
+            city: String(home.TEAM_CITY_NAME || ''),
+          },
+          awayTeam: {
+            id: String(row.VISITOR_TEAM_ID || away.TEAM_ID || ''),
+            abbreviation: String(away.TEAM_ABBREVIATION || 'AWAY'),
+            name: String(away.TEAM_NAME || away.TEAM_CITY_NAME || 'Away'),
+            city: String(away.TEAM_CITY_NAME || ''),
+          },
+          homeScore: toNumber(home.PTS),
+          awayScore: toNumber(away.PTS),
+        };
+
+        const existing = merged.get(gameId);
+        if (!existing) {
+          merged.set(gameId, candidate);
+          continue;
+        }
+
+        const currentRank = statusRank(existing.status);
+        const candidateRank = statusRank(candidate.status);
+        if (candidateRank > currentRank) {
+          merged.set(gameId, candidate);
+          continue;
+        }
+        if (candidateRank === currentRank && gameRichnessScore(candidate) > gameRichnessScore(existing)) {
+          merged.set(gameId, candidate);
+        }
+      }
+
+      const liveOutsideBaseDate = Array.from(merged.values()).some((g) => g.status === 'live' && g.date && dateISO && g.date !== dateISO);
+      if (liveOutsideBaseDate) {
+        console.info(`[LIVE_FOUND_OUTSIDE_BASE_DATE] baseDate=${dateISO} offset=${offset}`);
+      }
     }
 
-    const games: GameDTO[] = headersRows.map((row) => {
-      const gameId = String(row.GAME_ID || '');
-      const lines = lineByGame.get(gameId) || [];
-      const home = lines.find((l) => String(l.TEAM_ID) === String(row.HOME_TEAM_ID)) || lines[0] || {};
-      const away = lines.find((l) => String(l.TEAM_ID) === String(row.VISITOR_TEAM_ID)) || lines[1] || {};
-      const statusId = toNumber(row.GAME_STATUS_ID, 1);
-      const status = statusId === 3 ? 'final' : statusId === 2 ? 'live' : 'scheduled';
-      const statusText = String(row.GAME_STATUS_TEXT || '');
-      const displayGameTime = status === 'scheduled'
-        ? toLocal24hFromEt(String(row.GAME_DATE_EST || dateISO || ''), statusText, this.appTimezone)
-        : statusText;
-
-      return {
-        id: gameId,
-        gameId,
-        status,
-        GameStatus: status === 'final' ? 3 : status === 'live' ? 2 : 1,
-        date: String(row.GAME_DATE_EST || dateISO || ''),
-        gameTime: displayGameTime,
-        homeTeam: {
-          id: String(row.HOME_TEAM_ID || home.TEAM_ID || ''),
-          abbreviation: String(home.TEAM_ABBREVIATION || 'HOME'),
-          name: String(home.TEAM_NAME || home.TEAM_CITY_NAME || 'Home'),
-          city: String(home.TEAM_CITY_NAME || ''),
-        },
-        awayTeam: {
-          id: String(row.VISITOR_TEAM_ID || away.TEAM_ID || ''),
-          abbreviation: String(away.TEAM_ABBREVIATION || 'AWAY'),
-          name: String(away.TEAM_NAME || away.TEAM_CITY_NAME || 'Away'),
-          city: String(away.TEAM_CITY_NAME || ''),
-        },
-        homeScore: toNumber(home.PTS),
-        awayScore: toNumber(away.PTS),
-      };
-    });
-
+    const games = Array.from(merged.values());
     return {
       data: games,
-      source: games.length > 0 ? 'nba-stats' : scoreboardResult.source,
-      warning: scoreboardResult.warning,
-      errorCode: scoreboardResult.errorCode,
+      source: games.length > 0 ? 'nba-stats' : 'none',
+      warning,
+      errorCode,
     };
   }
 
@@ -542,54 +653,96 @@ export class NBAStatsProvider implements DataProvider {
 
   async getTeams(season?: string): Promise<ProviderResponse<TeamWithStats[]>> {
     const normalizedSeason = normalizeSeason(season);
-    const result = await this.request('leaguedashteamstats', {
-      Conference: '',
-      DateFrom: '',
-      DateTo: '',
-      Division: '',
-      GameScope: '',
-      GameSegment: '',
-      LastNGames: 0,
-      LeagueID: '00',
-      Location: '',
-      MeasureType: 'Base',
-      Month: 0,
-      OpponentTeamID: 0,
-      Outcome: '',
-      PORound: 0,
-      PaceAdjust: 'N',
-      PerMode: 'PerGame',
-      Period: 0,
-      PlusMinus: 'N',
-      Rank: 'N',
-      Season: normalizedSeason,
-      SeasonSegment: '',
-      SeasonType: 'Regular Season',
-      ShotClockRange: '',
-      StarterBench: '',
-      TeamID: 0,
-      TwoWay: 0,
-      VsConference: '',
-      VsDivision: '',
-    });
+    const [result, standingsResult] = await Promise.all([
+      this.request('leaguedashteamstats', {
+        Conference: '',
+        DateFrom: '',
+        DateTo: '',
+        Division: '',
+        GameScope: '',
+        GameSegment: '',
+        LastNGames: 0,
+        LeagueID: '00',
+        Location: '',
+        MeasureType: 'Base',
+        Month: 0,
+        OpponentTeamID: 0,
+        Outcome: '',
+        PORound: 0,
+        PaceAdjust: 'N',
+        PerMode: 'PerGame',
+        Period: 0,
+        PlusMinus: 'N',
+        Rank: 'N',
+        Season: normalizedSeason,
+        SeasonSegment: '',
+        SeasonType: 'Regular Season',
+        ShotClockRange: '',
+        StarterBench: '',
+        TeamID: 0,
+        TwoWay: 0,
+        VsConference: '',
+        VsDivision: '',
+      }),
+      this.request('leaguestandingsv3', {
+        LeagueID: '00',
+        Season: normalizedSeason,
+        SeasonType: 'Regular Season',
+      }),
+    ]);
 
     const rows = rowsFromResultSet(findResultSet(result.data, ['leaguedashteamstats']));
+    const standingsRows = rowsFromResultSet(findResultSet(standingsResult.data, ['standings', 'leagueStandings']));
+    const standingsByTeamId = new Map<string, AnyRecord>();
+    for (const row of standingsRows) {
+      const key = String(row.TeamID || row.TEAM_ID || row.teamId || '');
+      if (!key) continue;
+      standingsByTeamId.set(key, row);
+    }
+
     const teams: TeamWithStats[] = rows.map((r) => {
       const name = String(r.TEAM_NAME || 'NBA');
       const abbreviation = String(r.TEAM_ABBREVIATION || name.slice(0, 3).toUpperCase());
       const colors = getTeamColors(abbreviation);
+      const teamId = String(r.TEAM_ID || abbreviation.toLowerCase());
+      const standing = standingsByTeamId.get(teamId);
+      const wins = toNumber(standing?.WINS ?? standing?.W ?? r.W);
+      const losses = toNumber(standing?.LOSSES ?? standing?.L ?? r.L);
+      const gamesPlayed = Math.max(0, wins + losses);
+      const winPct = gamesPlayed > 0
+        ? wins / gamesPlayed
+        : toNumber(standing?.WinPCT ?? standing?.W_PCT ?? standing?.WIN_PCT);
+      const last10Data = parseLast10Record(
+        standing?.L10 ?? standing?.LAST10 ?? standing?.Last10 ?? standing?.L10_RECORD
+      );
+      const lastGames = last10Data.games;
+      const streak = buildStreak(
+        standing?.STRK ?? standing?.Streak ?? standing?.CurrentStreak,
+        lastGames
+      );
+      const conference = parseConference(
+        standing?.Conference ?? standing?.CONFERENCE ?? standing?.ConferenceName,
+        abbreviation
+      );
+      const conferenceRank = toNumber(
+        standing?.ConferenceRank ?? standing?.CONFERENCE_RANK ?? standing?.CONF_RANK ?? r.CFID
+      );
+      const overallRank = toNumber(
+        standing?.LeagueRank ?? standing?.LEAGUE_RANK ?? standing?.RANK ?? r.RANK
+      );
+
       return {
-        id: String(r.TEAM_ID || abbreviation.toLowerCase()),
+        id: teamId,
         name,
         abbreviation,
         city: String(name.split(' ').slice(0, -1).join(' ') || ''),
-        conference: 'West',
-        division: 'Unknown',
+        conference,
+        division: String(standing?.Division ?? standing?.DIVISION ?? 'Unknown'),
         primaryColor: colors.primaryColor,
         secondaryColor: colors.secondaryColor,
         stats: {
-          wins: toNumber(r.W),
-          losses: toNumber(r.L),
+          wins,
+          losses,
           pointsPerGame: toNumber(r.PTS),
           assistsPerGame: toNumber(r.AST),
           reboundsPerGame: toNumber(r.REB),
@@ -603,17 +756,23 @@ export class NBAStatsProvider implements DataProvider {
           defensiveRating: toNumber(r.DEF_RATING),
           pace: toNumber(r.PACE),
         },
-        streak: 'N/A',
-        lastGames: ['W', 'L', 'W', 'L', 'W'],
-        rank: { conference: toNumber(r.CFID), overall: toNumber(r.RANK) },
+        streak,
+        lastGames,
+        rank: { conference: conferenceRank, overall: overallRank },
+        record: {
+          winPct: Number(winPct.toFixed(3)),
+          gamesPlayed,
+          last10: last10Data.last10,
+          streak,
+        },
       } as TeamWithStats;
     });
 
     return {
       data: teams,
       source: teams.length > 0 ? 'nba-stats' : result.source,
-      warning: result.warning,
-      errorCode: result.errorCode,
+      warning: result.warning || standingsResult.warning,
+      errorCode: result.errorCode || standingsResult.errorCode,
     };
   }
 

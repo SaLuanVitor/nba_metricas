@@ -67,6 +67,12 @@
 - `GET /api/games/[id]`: resolved from orchestrated games list
 - `GET /api/games/[id]/boxscore`: `nba-stats -> boltodds`
 
+### Odds/Markets
+- `GET /api/odds/games`: games + tracked market snapshots + catalog metadata
+- `GET /api/odds/players?gameId=...`: player market picks with `modelProb`, `impliedProb`, `edge`, `expectedValue`
+- `GET /api/odds/movements?marketId=...`: line movement timeline and open-vs-latest deltas
+- `POST /api/odds/collect`: starts BoltOdds WebSocket collection window and persists market snapshots
+
 ## Response contract and observability
 - Read endpoints always return `HTTP 200` with graceful degradation.
 - Shared metadata:

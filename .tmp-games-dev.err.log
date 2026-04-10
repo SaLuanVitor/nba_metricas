@@ -1,0 +1,4 @@
+[UPSTREAM_BAD_RESPONSE] endpoint=/players/7096 details=attempt=1 status 404
+[UPSTREAM_BAD_RESPONSE] endpoint=/players/7096 details=attempt=1 status 404
+[UPSTREAM_BAD_RESPONSE] endpoint=/players/1629029 details=attempt=1 status 404
+^C

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { StatCard } from "@/components/stat-card"
 import { TopPlayersList } from "@/components/top-players-list"
 import { TrendingPlayers } from "@/components/trending-players"
-import { Users, Trophy, Activity, Target, Clock, Play, Calendar } from "lucide-react"
+import { Users, Trophy, Activity, Target, Clock, Play, Calendar, ExternalLink } from "lucide-react"
 
 export default function Dashboard() {
   const [data, setData] = useState({
@@ -207,6 +207,7 @@ function GameCard({ game }: { game: any }) {
   const gameEndTime = game.gameEndTime || game.GAME_END_TIME || '';
   const period = game.period || game.PERIOD || '';
   const clock = game.clock || game.CLOCK || '';
+  const watchUrl = game.watchUrl || game.WATCH_URL || '';
   
   const formattedDate = gameDate ? new Date(gameDate).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }) : new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
   
@@ -277,6 +278,18 @@ function GameCard({ game }: { game: any }) {
           <span className={`text-xl font-bold ${isLive ? 'text-green-400' : ''}`}>{homeTeam}</span>
         </div>
       </div>
+
+      {(isLive || isScheduled) && watchUrl && (
+        <a
+          href={watchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 md:mt-0 inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
+        >
+          Assistir Agora
+          <ExternalLink className="w-4 h-4" />
+        </a>
+      )}
     </div>
   );
 }

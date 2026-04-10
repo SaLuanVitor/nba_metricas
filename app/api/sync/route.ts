@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createNBAClient } from '@/lib/nba-api/client';
+import { collectBoltOddsMarketSnapshots } from '@/lib/odds/boltodds-collector';
 
 export async function POST(request: Request) {
   try {
@@ -22,11 +23,15 @@ export async function POST(request: Request) {
       case 'games':
         await syncGames(client);
         break;
+      case 'odds':
+        await syncOdds();
+        break;
       case 'all':
       default:
         await syncPlayers(client);
         await syncTeams(client);
         await syncGames(client);
+        await syncOdds();
         break;
     }
 
@@ -88,10 +93,21 @@ async function syncGames(client: any) {
   }
 }
 
+async function syncOdds() {
+  console.log('Syncing odds snapshots...');
+  const result = await collectBoltOddsMarketSnapshots({
+    apiKey: process.env.BOLTODDS_API_KEY,
+    sports: ['NBA'],
+    durationSec: 20,
+    maxMessages: 600,
+  });
+  console.log(`Captured odds snapshots: inserted=${result.inserted}, total=${result.totalSnapshots}, parsed=${result.parsedMarkets}`);
+}
+
 export async function GET() {
   return NextResponse.json({
     message: 'Use POST to trigger sync',
-    availableTypes: ['players', 'teams', 'games', 'all'],
+    availableTypes: ['players', 'teams', 'games', 'odds', 'all'],
     example: {
       type: 'POST',
       body: JSON.stringify({ type: 'all' }),

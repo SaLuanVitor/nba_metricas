@@ -41,7 +41,11 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     notFound()
   }
 
-  const roster: Player[] = (playersPayload?.data || []).filter((p: Player) => p.team?.id === id)
+  const roster: Player[] = (playersPayload?.data || []).filter((p: Player) => {
+    const byId = String(p.team?.id || '') === String(id)
+    const byAbbr = String(p.team?.abbreviation || '').toLowerCase() === String(team.abbreviation || '').toLowerCase()
+    return byId || byAbbr
+  })
   const totals = roster.reduce(
     (acc: { points: number; assists: number; rebounds: number; minutes: number; fantasy: number }, player: Player) => ({
       points: acc.points + player.projection.projectedPoints,
@@ -59,6 +63,16 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     avgMinutes: roster.length ? totals.minutes / roster.length : 0,
     totalFantasyPoints: totals.fantasy,
   }
+
+  const wins = Number(team.stats?.wins || 0)
+  const losses = Number(team.stats?.losses || 0)
+  const gamesPlayed = Number(team.record?.gamesPlayed ?? (wins + losses))
+  const winPct = Number(team.record?.winPct ?? (gamesPlayed > 0 ? wins / gamesPlayed : 0))
+  const last10 = String(team.record?.last10 || (() => {
+    const games = Array.isArray(team.lastGames) ? team.lastGames.slice(-10) : []
+    const winCount = games.filter((result: "W" | "L") => result === "W").length
+    return `${winCount}-${Math.max(0, games.length - winCount)}`
+  })())
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -105,10 +119,26 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-foreground">
-              {team.stats.wins}-{team.stats.losses}
-            </p>
-            <p className="text-xs text-muted-foreground">Record</p>
+            <p className="text-2xl font-bold text-green-500">{wins}</p>
+            <p className="text-xs text-muted-foreground">Vitorias</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-500">{losses}</p>
+            <p className="text-xs text-muted-foreground">Derrotas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{(winPct * 100).toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground">Win%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary">{last10}</p>
+            <p className="text-xs text-muted-foreground">Ultimos 10</p>
           </CardContent>
         </Card>
         <Card>

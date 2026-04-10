@@ -151,3 +151,37 @@ export async function getBoltOddsBoxScoreByGameKey(apiKey: string | undefined, g
     };
   }
 }
+
+export async function getBoltOddsInfo(apiKey?: string): Promise<BoltOddsResult<AnyRecord>> {
+  if (!apiKey) {
+    return {
+      data: {},
+      source: 'none',
+      warning: 'BOLTODDS_API_KEY is missing',
+      errorCode: 'UPSTREAM_UNAUTHORIZED',
+    };
+  }
+
+  const url = `${BOLTODDS_BASE_URL}/get_info?key=${encodeURIComponent(apiKey)}`;
+  return getJson<AnyRecord>(url);
+}
+
+export async function getBoltOddsMarketsCatalog(
+  apiKey: string | undefined,
+  options?: { sports?: string[]; sportsbooks?: string[] }
+): Promise<BoltOddsResult<AnyRecord>> {
+  if (!apiKey) {
+    return {
+      data: {},
+      source: 'none',
+      warning: 'BOLTODDS_API_KEY is missing',
+      errorCode: 'UPSTREAM_UNAUTHORIZED',
+    };
+  }
+
+  const query = new URLSearchParams({ key: apiKey });
+  if (options?.sports?.length) query.set('sports', options.sports.join(','));
+  if (options?.sportsbooks?.length) query.set('sportsbooks', options.sportsbooks.join(','));
+  const url = `${BOLTODDS_BASE_URL}/get_markets?${query.toString()}`;
+  return getJson<AnyRecord>(url);
+}
