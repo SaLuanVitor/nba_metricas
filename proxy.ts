@@ -4,7 +4,6 @@ import { verifySessionToken } from '@/lib/auth/token';
 const PUBLIC_PATHS = [
   '/login',
   '/register',
-  '/api/health',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/google',
