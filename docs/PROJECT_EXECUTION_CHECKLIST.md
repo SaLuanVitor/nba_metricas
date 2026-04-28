@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `854f0a1 docs: record migration checkpoint commits`
+- Ultimo commit conhecido: `f743e9a feat: add filters to today predictions`
 - Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e predicoes auditaveis, settlement e acuracia.
 
 ## Como usar este arquivo
@@ -169,7 +169,7 @@
   - Aceite: filtros `gameId`, `market`, `riskLevel`, `minEdgePct`, `minProbability` funcionam.
   - Verificacao: chamadas HTTP com combinacoes de query params.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `f743e9a`
   - Nota: rota aceita filtros por query string, retorna `filters` no payload e foi validada com snapshot manual em Postgres local.
 
 - [ ] F3.03 - Melhorar fallback quando nao ha odds snapshots.
