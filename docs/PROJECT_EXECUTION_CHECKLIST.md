@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `f743e9a feat: add filters to today predictions`
-- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e predicoes auditaveis, settlement e acuracia.
+- Ultimo commit conhecido: `85af290 docs: record prediction filter checkpoint`
+- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e fallback de predicoes, settlement e acuracia.
 
 ## Como usar este arquivo
 
@@ -172,11 +172,14 @@
   - Commit: `f743e9a`
   - Nota: rota aceita filtros por query string, retorna `filters` no payload e foi validada com snapshot manual em Postgres local.
 
-- [ ] F3.03 - Melhorar fallback quando nao ha odds snapshots.
+- [x] F3.03 - Melhorar fallback quando nao ha odds snapshots.
   - Dono: aios-architect
   - Depende de: F2.02
   - Aceite: endpoint retorna status explicavel sem picks, e opcionalmente sinaliza necessidade de coleta.
   - Verificacao: ambiente sem odds snapshots; resposta com warning claro.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: `/api/predictions/today` retorna `oddsSnapshotStatus` com `collectionRequired` e `collectEndpoint` quando nao ha snapshots utilizaveis.
 
 - [ ] F3.04 - Revisar fatores e pesos do Prediction Engine v1.
   - Dono: aios-analyst

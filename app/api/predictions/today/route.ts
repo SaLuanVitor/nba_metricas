@@ -183,6 +183,7 @@ export async function GET(request: Request) {
     .filter((game: any) => !filters.gameId || String(game.gameId || game.id) === filters.gameId);
   const players = Array.isArray(playersResult.data) ? playersResult.data : [];
   const playersById = new Map(players.map((player: Player) => [String(player.id), player]));
+  let scannedPlayerMarketSnapshots = 0;
   const picks: Array<PredictionOutput & {
     gameId: string;
     playerId: string;
@@ -203,6 +204,7 @@ export async function GET(request: Request) {
 
     for (const snapshot of snapshots) {
       if (!snapshot.playerId || !isPlayerMarket(snapshot.marketType) || !Number.isFinite(Number(snapshot.line))) continue;
+      scannedPlayerMarketSnapshots += 1;
       if (filters.market && snapshot.marketType !== filters.market) continue;
       const key = `${snapshot.playerId}:${snapshot.marketType}`;
       const existing = latestByPlayerMarket.get(key);
@@ -255,6 +257,11 @@ export async function GET(request: Request) {
     return b.probability - a.probability;
   });
 
+  const noOddsWarning = "No usable player market snapshots available for today's games. Run POST /api/odds/collect after configuring BOLTODDS_API_KEY.";
+  const warning = picks.length > 0
+    ? gamesResult.warning || playersResult.warning
+    : [gamesResult.warning, playersResult.warning, noOddsWarning].filter(Boolean).join(" | ");
+
   return NextResponse.json({
     success: true,
     data: {
@@ -269,13 +276,17 @@ export async function GET(request: Request) {
       picks,
       modelVersion: aiEngine.getModelInfo().version,
       filters,
+      oddsSnapshotStatus: {
+        scannedPlayerMarketSnapshots,
+        hasUsableSnapshots: scannedPlayerMarketSnapshots > 0,
+        collectionRequired: scannedPlayerMarketSnapshots === 0,
+        collectEndpoint: "/api/odds/collect",
+      },
     },
     source: picks.length > 0 ? "boltodds" : (gamesResult.source || playersResult.source || "none"),
     sourceHealth: gamesResult.sourceHealth === "ok" && playersResult.sourceHealth === "ok" && picks.length > 0 ? "ok" : "degraded",
     cacheStatus: gamesResult.cacheStatus === "rejected" && playersResult.cacheStatus === "rejected" ? "rejected" : "fresh",
-    warning: picks.length > 0
-      ? gamesResult.warning || playersResult.warning
-      : (gamesResult.warning || playersResult.warning || "No player market snapshots available for today's games"),
+    warning,
     errorCode: picks.length > 0 ? undefined : (gamesResult.errorCode || playersResult.errorCode),
     generatedAt,
   });

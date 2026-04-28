@@ -647,6 +647,8 @@ Query params opcionais:
 
 A resposta inclui `data.filters` com os filtros efetivamente aplicados.
 
+Quando nao houver odds utilizaveis, a resposta retorna `data.oddsSnapshotStatus.collectionRequired=true` e `collectEndpoint=/api/odds/collect`.
+
 ### Auditoria de Predicao
 
 ```
