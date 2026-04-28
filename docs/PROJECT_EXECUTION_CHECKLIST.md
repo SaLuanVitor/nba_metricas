@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `6278670 test: add today audit e2e flow`
-- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual, testes unitarios, integracao API e E2E minimo validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e limpeza DevOps.
+- Ultimo commit conhecido: `9b2daaa chore: clear lint warnings`
+- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual, testes unitarios, integracao API, E2E minimo e lint sem warnings validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e higiene de artefatos/deploy.
 
 ## Como usar este arquivo
 
@@ -296,12 +296,15 @@
   - Commit: `6278670`
   - Nota: adicionado Playwright com fluxo login -> `/today` -> auditoria mockada de predicao; `npm run test:e2e` passou em Chromium.
 
-- [ ] F6.04 - Limpar warnings de lint.
+- [x] F6.04 - Limpar warnings de lint.
   - Dono: aios-dev
   - Depende de: baseline atual
   - Aceite: `npm run lint` sem warnings.
   - Verificacao: `npm run lint`.
   - Nota QA 2026-04-28: `npm run lint` passou sem erros, mas ainda reporta 19 warnings de variaveis/args nao usados.
+  - Concluido em: 2026-04-28
+  - Commit: `9b2daaa`
+  - Nota: removidos imports/variaveis nao usados e parametros intencionalmente nao usados foram prefixados com `_`; `npm run lint` passou sem warnings.
 
 - [ ] F6.05 - Revisar versionamento de artefatos.
   - Dono: aios-devops
