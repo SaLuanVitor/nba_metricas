@@ -92,17 +92,6 @@ export default function Dashboard() {
     };
   }, [fetchData, pollIntervalMs]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Activity className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Carregando dados reais...</p>
-        </div>
-      </div>
-    );
-  }
-
   const { players, games, lastUpdate, source, sourceHealth, timezone } = data;
   
   const avgProjectedPoints = players.length > 0
@@ -181,6 +170,17 @@ export default function Dashboard() {
       setPositionFilter('all');
     }
   }, [positionFilter, todayPositionOptions]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Activity className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Carregando dados reais...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
