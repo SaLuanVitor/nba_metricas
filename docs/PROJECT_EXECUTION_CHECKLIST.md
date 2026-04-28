@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `38537c9 feat: add today decision dashboard`
+- Ultimo commit conhecido: `2ebb99c feat: add prediction audit page`
 - Status geral: Migracao operacional local, sync_runs, settlement e acuracia real validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e produto do usuario/testes.
 
 ## Como usar este arquivo
@@ -249,11 +249,14 @@
   - Commit: `38537c9`
   - Nota: filtros de jogo, mercado, risco, probabilidade minima e edge minimo conectados aos query params de `/api/predictions/today`; build validou a rota.
 
-- [ ] F5.03 - Criar tela de auditoria de predicao.
+- [x] F5.03 - Criar tela de auditoria de predicao.
   - Dono: aios-dev
   - Depende de: `/api/predictions/[id]`
   - Aceite: exibe input snapshot, output, fatores, modelo, status de settlement e outcome.
   - Verificacao: abrir auditoria a partir de uma pick.
+  - Concluido em: 2026-04-28
+  - Commit: `2ebb99c`
+  - Nota: criada rota `/predictions/[id]` com snapshot de entrada, output, fatores, modelo, settlement e outcome; `/today` agora abre a auditoria visual.
 
 - [x] F5.04 - Ajustar linguagem responsavel.
   - Dono: aios-po
