@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `63e20ce docs: record odds fallback checkpoint`
+- Ultimo commit conhecido: `e0b8ac7 feat: add prediction settlement flow`
 - Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e settlement/acuracia real.
 
 ## Como usar este arquivo
@@ -195,7 +195,7 @@
   - Aceite: previsoes pendentes sao liquidadas como `won`, `lost`, `push` ou `void`.
   - Verificacao: teste com jogo finalizado e boxscore disponivel.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `e0b8ac7`
   - Nota: criado servico de settlement com calculo de win/loss/push, ROI, erro absoluto e Brier score; validado com previsao controlada em Postgres local.
 
 - [x] F4.02 - Criar endpoint/job de settlement.
@@ -204,7 +204,7 @@
   - Aceite: rota protegida ou cron executa settlement por janela/data.
   - Verificacao: chamada autenticada; registros criados em `prediction_outcomes`.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `e0b8ac7`
   - Nota: criado `POST /api/predictions/settle`, protegido por `SYNC_ADMIN_SECRET` em producao; smoke autenticado retornou 200.
 
 - [x] F4.03 - Persistir metricas de outcome.
@@ -213,7 +213,7 @@
   - Aceite: outcomes gravam `actual_value`, `roi_units`, `error_abs`, `brier_score`, `settled_at`.
   - Verificacao: consulta SQL em `prediction_outcomes`.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `e0b8ac7`
   - Nota: outcomes sao persistidos via upsert em `prediction_outcomes` e sincronizam `predictions.settlement_status`; consulta SQL confirmou `actual_value`, `roi_units`, `error_abs`, `brier_score` e `settled_at`.
 
 - [ ] F4.04 - Validar `/api/accuracy` com outcomes reais.
