@@ -70,6 +70,8 @@ O projeto usa `pg` diretamente. A migracao operacional versionada inicial esta e
 migrations/001_operational_schema.sql
 ```
 
+O procedimento oficial de aplicar, auditar e reverter migracoes esta em [`docs/DB_MIGRATIONS.md`](docs/DB_MIGRATIONS.md).
+
 As funcoes atuais ainda criam tabelas defensivamente em runtime para compatibilidade com ambientes existentes, mas o caminho recomendado e aplicar migracoes antes do deploy.
 
 ## Endpoints Principais

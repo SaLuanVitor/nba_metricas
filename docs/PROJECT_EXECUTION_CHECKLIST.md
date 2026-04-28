@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `525ac05`
-- Status geral: Migracao operacional validada em Postgres Docker local; proximo foco e settlement/acuracia auditavel.
+- Ultimo commit conhecido: `5e669dc fix: make production start resilient`
+- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; proximo foco e odds snapshots, settlement e acuracia auditavel.
 
 ## Como usar este arquivo
 
@@ -115,19 +115,25 @@
   - Commit: `525ac05`
   - Nota: validado em `localhost:3000` com sessao de usuario local aprovada; endpoints retornaram 200. `/api/accuracy` retornou warning esperado por ausencia de outcomes liquidados.
 
-- [ ] F1.04 - Registrar modelo de versionamento de migracoes.
+- [x] F1.04 - Registrar modelo de versionamento de migracoes.
   - Dono: aios-data-engineer
   - Depende de: migracao inicial aplicada
   - Aceite: documentar como aplicar, reverter e auditar migracoes futuras.
   - Verificacao: atualizar docs operacionais e revisar com aios-devops.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: criado `docs/DB_MIGRATIONS.md` com convencao de arquivos, aplicacao local Docker, aplicacao Railway, auditoria e politica de rollback.
 
 ## Fase 2: Pipeline de dados NBA
 
-- [ ] F2.01 - Registrar execucoes completas em `sync_runs`.
+- [x] F2.01 - Registrar execucoes completas em `sync_runs`.
   - Dono: aios-dev
   - Depende de: F1.01, `/api/sync`
   - Aceite: cada sync manual ou cron salva status, output e erro quando houver.
   - Verificacao: `POST /api/sync`; consulta em `sync_runs`.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: validado com `POST /api/sync` tipo `maintenance` em standalone local com `SYNC_ADMIN_SECRET`; `sync_runs` gravou `status=success`, `output_jsonb` e sem erro. Cron operacional segue em F2.04.
 
 - [ ] F2.02 - Persistir odds snapshots em Postgres em ambiente real.
   - Dono: aios-data-engineer

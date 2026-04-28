@@ -39,6 +39,8 @@ Este projeto já inclui `railway.json` com:
 - healthcheck em `/api/health`
 
 ## 4) Validar após deploy
+Antes do deploy de app, aplique as migracoes versionadas conforme [`docs/DB_MIGRATIONS.md`](DB_MIGRATIONS.md).
+
 Abra no domínio público:
 
 1. `/api/health`
