@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `c2ea557 docs: document database migrations and sync validation`
-- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; proximo foco e odds snapshots, settlement e acuracia auditavel.
+- Ultimo commit conhecido: `854f0a1 docs: record migration checkpoint commits`
+- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e predicoes auditaveis, settlement e acuracia.
 
 ## Como usar este arquivo
 
@@ -140,6 +140,8 @@
   - Depende de: F1.01, `BOLTODDS_API_KEY`
   - Aceite: `odds_snapshots` recebe snapshots; `.cache` fica apenas fallback dev.
   - Verificacao: `POST /api/odds/collect`; consulta por `game_id`.
+  - Bloqueado em: 2026-04-28
+  - Motivo: `BOLTODDS_API_KEY` nao esta configurado em `.env.local`, `.env` ou `.env.docker`; sem chave nao ha como validar coleta real do upstream.
 
 - [ ] F2.03 - Validar cobertura de players, teams e games.
   - Dono: aios-analyst
@@ -161,11 +163,14 @@
   - Aceite: toda entrada de `/api/predictions/today` possui `predictionId` e `auditUrl` funcional.
   - Verificacao: chamar `/api/predictions/today`; abrir `/api/predictions/{id}`.
 
-- [ ] F3.02 - Adicionar filtros em `/api/predictions/today`.
+- [x] F3.02 - Adicionar filtros em `/api/predictions/today`.
   - Dono: aios-dev
   - Depende de: F3.01
   - Aceite: filtros `gameId`, `market`, `riskLevel`, `minEdgePct`, `minProbability` funcionam.
   - Verificacao: chamadas HTTP com combinacoes de query params.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: rota aceita filtros por query string, retorna `filters` no payload e foi validada com snapshot manual em Postgres local.
 
 - [ ] F3.03 - Melhorar fallback quando nao ha odds snapshots.
   - Dono: aios-architect

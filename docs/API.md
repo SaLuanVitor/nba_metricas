@@ -637,6 +637,16 @@ GET /predictions/today
 
 Retorna jogos do dia e props candidatas com `predictionId`, `probability`, `confidence`, `edge`, `expectedValue`, `riskLevel`, `reasons` e `auditUrl`.
 
+Query params opcionais:
+
+- `gameId`: limita picks a um jogo especifico.
+- `market`: aceita `player_points`, `player_assists` ou `player_rebounds`.
+- `riskLevel`: aceita `baixo`, `medio` ou `alto`.
+- `minEdgePct`: edge minimo em pontos percentuais; exemplo `2` significa edge minimo de 2%.
+- `minProbability`: probabilidade minima do modelo em percentual; exemplo `60`.
+
+A resposta inclui `data.filters` com os filtros efetivamente aplicados.
+
 ### Auditoria de Predicao
 
 ```

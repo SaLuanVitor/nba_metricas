@@ -23,6 +23,20 @@ function isPlayerMarket(marketType: MarketType): marketType is PredictionMarket 
   return marketType === "player_points" || marketType === "player_assists" || marketType === "player_rebounds";
 }
 
+function parseMarketFilter(value: string | null): PredictionMarket | null {
+  return value && isPlayerMarket(value as MarketType) ? value as PredictionMarket : null;
+}
+
+function parseRiskFilter(value: string | null): RiskLevel | null {
+  return value === "baixo" || value === "medio" || value === "alto" ? value : null;
+}
+
+function parseNumberFilter(value: string | null): number | null {
+  if (value === null || value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function riskFrom(probability: number, confidence: string, edge: number | null): RiskLevel {
   if (probability >= 62 && (edge ?? 0) >= 0.04 && (confidence === "high" || confidence === "very-high")) return "baixo";
   if (probability >= 55 && (edge ?? 0) >= 0.01) return "medio";
@@ -148,15 +162,25 @@ function buildAuditablePrediction(params: {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const generatedAt = new Date().toISOString();
+  const { searchParams } = new URL(request.url);
+  const filters = {
+    gameId: searchParams.get("gameId")?.trim() || null,
+    market: parseMarketFilter(searchParams.get("market")),
+    riskLevel: parseRiskFilter(searchParams.get("riskLevel")),
+    minEdgePct: parseNumberFilter(searchParams.get("minEdgePct")),
+    minProbability: parseNumberFilter(searchParams.get("minProbability")),
+  };
+  const minEdgeDecimal = filters.minEdgePct === null ? null : filters.minEdgePct / 100;
   const orchestrator = getDataOrchestrator();
   const season = process.env.NBA_SEASON;
   const [gamesResult, playersResult] = await Promise.all([
     orchestrator.getGamesToday(),
     orchestrator.getPlayers(season),
   ]);
-  const games = Array.isArray(gamesResult.data) ? gamesResult.data : [];
+  const games = (Array.isArray(gamesResult.data) ? gamesResult.data : [])
+    .filter((game: any) => !filters.gameId || String(game.gameId || game.id) === filters.gameId);
   const players = Array.isArray(playersResult.data) ? playersResult.data : [];
   const playersById = new Map(players.map((player: Player) => [String(player.id), player]));
   const picks: Array<PredictionOutput & {
@@ -179,6 +203,7 @@ export async function GET() {
 
     for (const snapshot of snapshots) {
       if (!snapshot.playerId || !isPlayerMarket(snapshot.marketType) || !Number.isFinite(Number(snapshot.line))) continue;
+      if (filters.market && snapshot.marketType !== filters.market) continue;
       const key = `${snapshot.playerId}:${snapshot.marketType}`;
       const existing = latestByPlayerMarket.get(key);
       if (!existing || new Date(snapshot.timestamp).getTime() > new Date(existing.timestamp).getTime()) {
@@ -198,6 +223,9 @@ export async function GET() {
         sourceHealth: gamesResult.sourceHealth === "ok" && playersResult.sourceHealth === "ok" ? "ok" : "degraded",
         cacheStatus: gamesResult.cacheStatus === "rejected" ? "rejected" : "fresh",
       });
+      if (filters.riskLevel && prediction.output.riskLevel !== filters.riskLevel) continue;
+      if (filters.minProbability !== null && prediction.output.probability < filters.minProbability) continue;
+      if (minEdgeDecimal !== null && (prediction.output.edge === null || prediction.output.edge < minEdgeDecimal)) continue;
       await savePrediction({
         prediction,
         source: "boltodds",
@@ -240,6 +268,7 @@ export async function GET() {
       })),
       picks,
       modelVersion: aiEngine.getModelInfo().version,
+      filters,
     },
     source: picks.length > 0 ? "boltodds" : (gamesResult.source || playersResult.source || "none"),
     sourceHealth: gamesResult.sourceHealth === "ok" && playersResult.sourceHealth === "ok" && picks.length > 0 ? "ok" : "degraded",
