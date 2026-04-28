@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "npm run typecheck",
+    "test:e2e": "playwright test",
     "test:visual": "npm run typecheck",
     "docker:build": "docker build -t nba-metricas:latest .",
     "docker:up": "docker-compose up -d",
@@ -74,6 +74,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
     "@types/react": "19.2.14",
