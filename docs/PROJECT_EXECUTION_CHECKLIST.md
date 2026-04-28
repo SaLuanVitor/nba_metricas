@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `17861ae feat: explain missing odds snapshots`
-- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e fallback de predicoes, settlement e acuracia.
+- Ultimo commit conhecido: `63e20ce docs: record odds fallback checkpoint`
+- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e settlement/acuracia real.
 
 ## Como usar este arquivo
 
@@ -189,23 +189,32 @@
 
 ## Fase 4: Settlement e acuracia real
 
-- [ ] F4.01 - Criar servico de settlement.
+- [x] F4.01 - Criar servico de settlement.
   - Dono: aios-dev
   - Depende de: `prediction_outcomes`, boxscore final
   - Aceite: previsoes pendentes sao liquidadas como `won`, `lost`, `push` ou `void`.
   - Verificacao: teste com jogo finalizado e boxscore disponivel.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: criado servico de settlement com calculo de win/loss/push, ROI, erro absoluto e Brier score; validado com previsao controlada em Postgres local.
 
-- [ ] F4.02 - Criar endpoint/job de settlement.
+- [x] F4.02 - Criar endpoint/job de settlement.
   - Dono: aios-architect
   - Depende de: F4.01
   - Aceite: rota protegida ou cron executa settlement por janela/data.
   - Verificacao: chamada autenticada; registros criados em `prediction_outcomes`.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: criado `POST /api/predictions/settle`, protegido por `SYNC_ADMIN_SECRET` em producao; smoke autenticado retornou 200.
 
-- [ ] F4.03 - Persistir metricas de outcome.
+- [x] F4.03 - Persistir metricas de outcome.
   - Dono: aios-data-engineer
   - Depende de: F4.01
   - Aceite: outcomes gravam `actual_value`, `roi_units`, `error_abs`, `brier_score`, `settled_at`.
   - Verificacao: consulta SQL em `prediction_outcomes`.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: outcomes sao persistidos via upsert em `prediction_outcomes` e sincronizam `predictions.settlement_status`; consulta SQL confirmou `actual_value`, `roi_units`, `error_abs`, `brier_score` e `settled_at`.
 
 - [ ] F4.04 - Validar `/api/accuracy` com outcomes reais.
   - Dono: aios-analyst

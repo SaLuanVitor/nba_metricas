@@ -657,6 +657,19 @@ GET /predictions/[id]
 
 Retorna `inputSnapshot`, `output`, `modelVersion`, status de settlement e outcome quando existir.
 
+### Settlement de Predicao
+
+```
+POST /api/predictions/settle
+```
+
+Rota operacional protegida por `SYNC_ADMIN_SECRET` em producao. Aceita dois modos:
+
+- `{ "predictionId": "pred_...", "actualValue": 24 }`: liquida uma previsao especifica com valor real informado.
+- `{ "gameId": "002..." }`: tenta liquidar previsoes pendentes do jogo usando boxscore final disponivel.
+
+O outcome gravado em `prediction_outcomes` inclui `status`, `actualValue`, `roiUnits`, `errorAbs`, `brierScore` e `settledAt`.
+
 ### Model Runs
 
 ```

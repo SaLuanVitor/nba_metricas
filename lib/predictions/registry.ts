@@ -155,6 +155,61 @@ export async function getPredictionById(id: string): Promise<AuditablePrediction
   return rows[0] ? rowToPrediction(rows[0]) : null;
 }
 
+export async function listPendingPredictionsByGame(gameId: string): Promise<AuditablePrediction[]> {
+  if (!isPgConfigured()) return [];
+  await ensureOperationalTables();
+  const rows = await pgQuery<PredictionRow>(
+    `
+      SELECT p.*, o.status AS settlement_status, o.actual_value, o.settled_at, o.roi_units, o.error_abs, o.brier_score
+      FROM predictions p
+      LEFT JOIN prediction_outcomes o ON o.prediction_id = p.id
+      WHERE p.game_id = $1
+        AND COALESCE(o.status, p.settlement_status, 'pending') = 'pending'
+      ORDER BY p.created_at ASC
+    `,
+    [gameId]
+  );
+  return rows.map(rowToPrediction);
+}
+
+export async function savePredictionOutcome(input: {
+  predictionId: string;
+  outcome: PredictionOutcome;
+}): Promise<void> {
+  if (!isPgConfigured()) return;
+  await ensureOperationalTables();
+  await pgQuery(
+    `
+      INSERT INTO prediction_outcomes (
+        prediction_id, status, actual_value, settled_at, roi_units, error_abs, brier_score, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4::timestamptz, $5, $6, $7, NOW(), NOW()
+      )
+      ON CONFLICT (prediction_id) DO UPDATE SET
+        status=EXCLUDED.status,
+        actual_value=EXCLUDED.actual_value,
+        settled_at=EXCLUDED.settled_at,
+        roi_units=EXCLUDED.roi_units,
+        error_abs=EXCLUDED.error_abs,
+        brier_score=EXCLUDED.brier_score,
+        updated_at=NOW()
+    `,
+    [
+      input.predictionId,
+      input.outcome.status,
+      input.outcome.actualValue ?? null,
+      input.outcome.settledAt || new Date().toISOString(),
+      input.outcome.roiUnits ?? null,
+      input.outcome.errorAbs ?? null,
+      input.outcome.brierScore ?? null,
+    ]
+  );
+  await pgQuery(
+    `UPDATE predictions SET settlement_status=$2 WHERE id=$1`,
+    [input.predictionId, input.outcome.status]
+  );
+}
+
 export async function getSettledPredictionMetrics(): Promise<{
   total: number;
   wins: number;
