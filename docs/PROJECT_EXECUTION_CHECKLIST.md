@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `2ebb99c feat: add prediction audit page`
-- Status geral: Migracao operacional local, sync_runs, settlement e acuracia real validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e produto do usuario/testes.
+- Ultimo commit conhecido: `0f011f3 test: add prediction unit suite`
+- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual e testes unitarios iniciais validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e integracao/E2E/DevOps.
 
 ## Como usar este arquivo
 
@@ -269,11 +269,14 @@
 
 ## Fase 6: Testes, DevOps e producao
 
-- [ ] F6.01 - Criar testes unitarios reais.
+- [x] F6.01 - Criar testes unitarios reais.
   - Dono: aios-dev
   - Depende de: framework de teste escolhido
   - Aceite: odds math, risk mapping, registry e contratos cobertos.
   - Verificacao: `npm run test` executa suite real.
+  - Concluido em: 2026-04-28
+  - Commit: `0f011f3`
+  - Nota: adicionado Vitest com 15 testes cobrindo odds math, risk mapping, ID deterministico do registry e settlement outcome; `npm run test` passou.
 
 - [ ] F6.02 - Criar testes de integracao de API.
   - Dono: aios-dev
@@ -305,6 +308,7 @@
   - Depende de: F1.02, F2.04, F6.01
   - Aceite: ambiente sobe com secrets, banco, health check e rollback documentados.
   - Verificacao: deploy em staging/producao; `GET /api/health`.
+  - Nota DevOps 2026-04-28: `npm install --save-dev vitest` reportou 6 vulnerabilidades no audit; revisar antes de deploy final.
 
 ## Fase Final: Operacao continua e ML V2
 
