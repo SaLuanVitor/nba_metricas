@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `0f011f3 test: add prediction unit suite`
-- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual e testes unitarios iniciais validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e integracao/E2E/DevOps.
+- Ultimo commit conhecido: `55d861d test: add api route integration coverage`
+- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual, testes unitarios e testes de integracao API iniciais validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e E2E/DevOps.
 
 ## Como usar este arquivo
 
@@ -278,11 +278,14 @@
   - Commit: `0f011f3`
   - Nota: adicionado Vitest com 15 testes cobrindo odds math, risk mapping, ID deterministico do registry e settlement outcome; `npm run test` passou.
 
-- [ ] F6.02 - Criar testes de integracao de API.
+- [x] F6.02 - Criar testes de integracao de API.
   - Dono: aios-dev
   - Depende de: mocks de providers e banco de teste
   - Aceite: `/api/predictions/today`, `/api/predictions/[id]`, `/api/accuracy`, `/api/sync` cobertos.
   - Verificacao: suite de integracao em CI.
+  - Concluido em: 2026-04-28
+  - Commit: `55d861d`
+  - Nota: adicionada suite `tests/api-routes.test.ts` com mocks de registry, providers, odds e sync; cobre today, prediction audit, accuracy e sync unauthorized; `npm run test` passou com 20 testes.
 
 - [ ] F6.03 - Criar E2E minimo.
   - Dono: aios-devops
