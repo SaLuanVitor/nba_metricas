@@ -301,7 +301,7 @@ export default function TodayPage() {
                     <div className="text-sm text-muted-foreground">{pick.team || "-"} - {pick.sportsbook || "sportsbook"} {pick.americanOdds ? `- ${pick.americanOdds}` : ""}</div>
                   </div>
                   <Button asChild variant="outline" size="sm">
-                    <Link href={pick.auditUrl} target="_blank">
+                    <Link href={`/predictions/${pick.predictionId}`}>
                       Auditoria
                       <ArrowUpRight className="ml-2 h-4 w-4" />
                     </Link>
