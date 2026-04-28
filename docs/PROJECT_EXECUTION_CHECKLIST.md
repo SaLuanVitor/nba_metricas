@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `85af290 docs: record prediction filter checkpoint`
+- Ultimo commit conhecido: `17861ae feat: explain missing odds snapshots`
 - Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e fallback de predicoes, settlement e acuracia.
 
 ## Como usar este arquivo
@@ -178,7 +178,7 @@
   - Aceite: endpoint retorna status explicavel sem picks, e opcionalmente sinaliza necessidade de coleta.
   - Verificacao: ambiente sem odds snapshots; resposta com warning claro.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `17861ae`
   - Nota: `/api/predictions/today` retorna `oddsSnapshotStatus` com `collectionRequired` e `collectEndpoint` quando nao ha snapshots utilizaveis.
 
 - [ ] F3.04 - Revisar fatores e pesos do Prediction Engine v1.
