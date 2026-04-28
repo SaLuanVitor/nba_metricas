@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `2c9c0bf docs: record settlement checkpoint`
+- Ultimo commit conhecido: `5fa2d40 docs: mark accuracy validation complete`
 - Status geral: Migracao operacional local, sync_runs, settlement e acuracia real validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e produto do usuario/testes.
 
 ## Como usar este arquivo
@@ -222,7 +222,7 @@
   - Aceite: endpoint retorna sample size, win/loss, ROI, erro medio e Brier score sem warning de ausencia de amostra.
   - Verificacao: `GET /api/accuracy`; `GET /api/ai/accuracy`.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `5fa2d40`
   - Nota: validado com outcome controlado em Postgres local; `/api/accuracy` e `/api/ai/accuracy` retornaram sample size 1, accuracy 100, ROI 90.91, erro medio 3.5 e Brier 0.1225 sem warning.
 
 ## Fase 5: Produto do usuario
