@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPgHealth } from '@/lib/db/pg';
+import { getLatestSyncRuns, getPgHealth } from '@/lib/db/pg';
 import { getResilienceSnapshot } from '@/lib/resilience/control';
 import { getSnapshotMetrics } from '@/lib/cache/snapshot-store';
 
@@ -14,6 +14,7 @@ export async function GET() {
   const isDev = (process.env.NODE_ENV || 'development') !== 'production';
   const resilience = getResilienceSnapshot();
   const snapshotMetrics = await getSnapshotMetrics();
+  const latestSyncRuns = await getLatestSyncRuns(5);
 
   const providerStatus = {
     'nba-stats': hasNBAStats ? 'configured' : (isDev ? 'degraded' : 'unavailable'),
@@ -56,6 +57,11 @@ export async function GET() {
     telemetry: {
       counters: resilience.counters,
       latency: resilience.latencySummary,
+    },
+    operations: {
+      latestSyncRuns,
+      syncSecretRequired: process.env.NODE_ENV === 'production',
+      syncSecretConfigured: Boolean(process.env.SYNC_ADMIN_SECRET),
     },
   });
 }

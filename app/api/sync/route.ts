@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDataOrchestrator } from '@/lib/data-orchestrator';
 import { collectBoltOddsMarketSnapshots } from '@/lib/odds/boltodds-collector';
 import { pruneExpired } from '@/lib/cache/snapshot-store';
+import { finishSyncRun, startSyncRun } from '@/lib/db/pg';
 
 type SyncType = 'players' | 'teams' | 'games' | 'odds' | 'maintenance' | 'all';
 const syncThrottleByType = new Map<string, number>();
@@ -9,7 +10,8 @@ const SYNC_THROTTLE_MS = Math.max(10_000, Number(process.env.SYNC_THROTTLE_MS ||
 
 function isAuthorized(request: Request): boolean {
   const secret = String(process.env.SYNC_ADMIN_SECRET || '').trim();
-  if (!secret) return true;
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!secret) return !isProduction;
   const header = request.headers.get('x-sync-secret') || '';
   const bearer = request.headers.get('authorization') || '';
   if (header && header === secret) return true;
@@ -49,36 +51,43 @@ export async function POST(request: Request) {
     }
 
     const orchestrator = getDataOrchestrator();
+    const syncRunId = await startSyncRun(normalizedType);
 
     console.log('=== SYNC API ===');
     console.log('Type:', normalizedType);
 
     const output: Record<string, any> = {};
 
-    switch (normalizedType) {
-      case 'players':
-        output.players = await syncPlayers(orchestrator, Boolean(force));
-        break;
-      case 'teams':
-        output.teams = await syncTeams(orchestrator, Boolean(force));
-        break;
-      case 'games':
-        output.games = await syncGames(orchestrator, Boolean(force));
-        break;
-      case 'odds':
-        output.odds = await syncOdds();
-        break;
-      case 'maintenance':
-        output.maintenance = await syncMaintenance();
-        break;
-      case 'all':
-      default:
-        output.players = await syncPlayers(orchestrator, Boolean(force));
-        output.teams = await syncTeams(orchestrator, Boolean(force));
-        output.games = await syncGames(orchestrator, Boolean(force));
-        output.odds = await syncOdds();
-        output.maintenance = await syncMaintenance();
-        break;
+    try {
+      switch (normalizedType) {
+        case 'players':
+          output.players = await syncPlayers(orchestrator, Boolean(force));
+          break;
+        case 'teams':
+          output.teams = await syncTeams(orchestrator, Boolean(force));
+          break;
+        case 'games':
+          output.games = await syncGames(orchestrator, Boolean(force));
+          break;
+        case 'odds':
+          output.odds = await syncOdds();
+          break;
+        case 'maintenance':
+          output.maintenance = await syncMaintenance();
+          break;
+        case 'all':
+        default:
+          output.players = await syncPlayers(orchestrator, Boolean(force));
+          output.teams = await syncTeams(orchestrator, Boolean(force));
+          output.games = await syncGames(orchestrator, Boolean(force));
+          output.odds = await syncOdds();
+          output.maintenance = await syncMaintenance();
+          break;
+      }
+      await finishSyncRun(syncRunId, 'success', output);
+    } catch (error) {
+      await finishSyncRun(syncRunId, 'failed', output, error instanceof Error ? error.message : 'Unknown error');
+      throw error;
     }
 
     return NextResponse.json({
@@ -86,7 +95,9 @@ export async function POST(request: Request) {
       message: `Sync completed for: ${normalizedType}`,
       type: normalizedType,
       output,
+      syncRunId,
       timestamp: new Date().toISOString(),
+      generatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Sync error:', error);

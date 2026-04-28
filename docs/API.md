@@ -189,7 +189,7 @@ GET /players/[id]/projections
     "projectedMinutes": 36.0,
     "confidence": 85,
     "trend": "up",
-    "methodology": "XGBoost + Neural Network Ensemble",
+    "methodology": "Prediction Engine v1 heuristic baseline",
     "factors": [
       "Recent performance (last 5 games)",
       "Matchup analysis",
@@ -433,6 +433,8 @@ GET /api/games/[id]/boxscore
 
 ## AI/ML
 
+> Status atual: o motor de predicao e o `Prediction Engine v1`, um baseline heuristico auditavel. Ele nao deve ser descrito como XGBoost, neural network ou modelo treinado ate existir pipeline validado.
+
 ### Projeções do Dia
 
 ```
@@ -620,6 +622,45 @@ POST /sync/teams
 ```
 POST /sync/games
 ```
+
+---
+
+## Health Check
+
+## Predicoes Auditaveis
+
+### Predicoes de Hoje
+
+```
+GET /predictions/today
+```
+
+Retorna jogos do dia e props candidatas com `predictionId`, `probability`, `confidence`, `edge`, `expectedValue`, `riskLevel`, `reasons` e `auditUrl`.
+
+### Auditoria de Predicao
+
+```
+GET /predictions/[id]
+```
+
+Retorna `inputSnapshot`, `output`, `modelVersion`, status de settlement e outcome quando existir.
+
+### Model Runs
+
+```
+GET /model-runs
+```
+
+Lista a versao ativa do Prediction Engine v1 e metricas conhecidas a partir de outcomes liquidados.
+
+### Acuracia
+
+```
+GET /accuracy
+GET /ai/accuracy
+```
+
+Usa `prediction_outcomes` quando houver dados liquidados. Sem outcomes, retorna sample size zero com aviso.
 
 ---
 

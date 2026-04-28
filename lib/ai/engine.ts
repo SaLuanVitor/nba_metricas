@@ -167,7 +167,7 @@ export function generateProjection(player: Player, opponentDefense: number = 112
     projectedMinutes: Math.min(48, Math.round(stats.minutes + (weightedImpact * 0.1))),
     confidence: Math.round(confidence),
     trend: getTrendDirection(trendChange),
-    methodology: 'XGBoost + Neural Network Ensemble',
+    methodology: 'Prediction Engine v1 heuristic baseline',
     factors
   };
 }
@@ -345,7 +345,7 @@ export function generateInsights(player: Player): string[] {
 }
 
 export class AIEngine {
-  private modelVersion: string = '1.0.0';
+  private modelVersion: string = 'prediction-engine-v1';
   private lastTrainingDate: Date = new Date();
   
   async trainModel(historicalData: any[]): Promise<void> {
@@ -367,7 +367,7 @@ export class AIEngine {
     return {
       version: this.modelVersion,
       lastTraining: this.lastTrainingDate,
-      methodology: 'XGBoost + Neural Network Ensemble'
+      methodology: 'Prediction Engine v1 heuristic baseline'
     };
   }
 }

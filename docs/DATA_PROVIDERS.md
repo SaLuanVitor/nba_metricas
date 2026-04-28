@@ -4,6 +4,7 @@
 - `NBA Stats API` is the primary source for players, teams, season metrics, game logs, schedule, and boxscore.
 - `BallDontLie` is contingency fallback for core NBA catalog and season averages.
 - `BoltOdds` is specialized fallback for games and boxscore, and optional real-time odds/live feeds.
+- In production, odds snapshots should be persisted in Postgres (`odds_snapshots`). Local `.cache` storage is a development fallback only.
 
 ## What each API provides
 
@@ -81,6 +82,7 @@
   - `cacheStatus`: `fresh | stale | rejected` (when available)
   - `warning?`
   - `errorCode?`
+  - `generatedAt?` on newer endpoints
 - `/api/players` also returns:
   - `statsCoverage`
   - `activePlayersCount`

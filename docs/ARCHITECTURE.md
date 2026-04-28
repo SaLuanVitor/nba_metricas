@@ -28,11 +28,11 @@
 | **Frontend** | Next.js 16, React 19, Tailwind CSS 4 |
 | **Backend** | Next.js API Routes, Server Actions |
 | **Database** | Vercel Postgres (PostgreSQL) |
-| **Cache** | Redis (Vercel KV) |
-| **Auth** | NextAuth.js v5 |
-| **IA/ML** | XGBoost, Neural Networks (Custom) |
-| **Testing** | Vitest, Playwright |
-| **Deploy** | Vercel |
+| **Cache** | Postgres snapshots + in-memory/local dev fallback |
+| **Auth** | Custom HMAC cookie auth + Google OAuth flow |
+| **IA/ML** | Prediction Engine v1 heuristic baseline |
+| **Testing** | Typecheck/lint baseline; full unit/e2e pending |
+| **Deploy** | Railway recommended; Vercel docs are legacy |
 
 ## Arquitetura de Dados
 

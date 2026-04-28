@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { getSettledPredictionMetrics } from '@/lib/predictions/registry';
+import { NextResponse } from "next/server";
+import { getSettledPredictionMetrics } from "@/lib/predictions/registry";
 
 export async function GET() {
   const generatedAt = new Date().toISOString();
@@ -14,7 +14,6 @@ export async function GET() {
         accuracy: metrics.accuracy,
         lastUpdated: generatedAt,
       },
-      byMetric: {},
       betting: {
         roi: metrics.roi,
         sampleSize: metrics.total,
@@ -25,13 +24,13 @@ export async function GET() {
         brierScore: metrics.brierScore,
       },
       period: {
-        method: 'settled prediction_outcomes',
+        method: "settled prediction_outcomes",
       },
     },
-    source: 'none',
-    sourceHealth: metrics.total > 0 ? 'ok' : 'degraded',
-    cacheStatus: 'fresh',
-    warning: metrics.total > 0 ? undefined : 'No settled prediction outcomes yet',
+    source: "none",
+    sourceHealth: metrics.total > 0 ? "ok" : "degraded",
+    cacheStatus: "fresh",
+    warning: metrics.total > 0 ? undefined : "No settled prediction outcomes yet",
     generatedAt,
   });
 }

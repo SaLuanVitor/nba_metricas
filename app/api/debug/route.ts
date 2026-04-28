@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
+function isAuthorized(request: Request): boolean {
+  const secret = String(process.env.DEBUG_API_SECRET || process.env.SYNC_ADMIN_SECRET || '').trim();
+  if (!secret) return process.env.NODE_ENV !== 'production';
+  const header = request.headers.get('x-debug-secret') || '';
+  const bearer = request.headers.get('authorization') || '';
+  if (header && header === secret) return true;
+  if (bearer.toLowerCase().startsWith('bearer ') && bearer.slice(7).trim() === secret) return true;
+  return false;
+}
+
 // Teste direto da API NBA.com
 async function testNBAApi() {
   const today = new Date();
@@ -39,7 +49,14 @@ async function testNBAApi() {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({
+      debug: false,
+      error: 'Unauthorized debug request',
+    }, { status: 401 });
+  }
+
   const todayNBA = new Date();
   const month = String(todayNBA.getMonth() + 1).padStart(2, '0');
   const day = String(todayNBA.getDate()).padStart(2, '0');

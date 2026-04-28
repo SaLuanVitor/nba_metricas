@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { ensureOperationalTables, isPgConfigured, pgQuery } from '@/lib/db/pg';
 import { americanOddsToImpliedProb } from '@/lib/odds/market-utils';
 
 export type MarketType = 'moneyline' | 'spread' | 'total' | 'player_points' | 'player_assists' | 'player_rebounds';
@@ -37,6 +38,52 @@ function normalizeSnapshot(snapshot: MarketSnapshot): MarketSnapshot {
 }
 
 export async function readMarketSnapshots(): Promise<MarketSnapshot[]> {
+  if (isPgConfigured()) {
+    try {
+      await ensureOperationalTables();
+      const rows = await pgQuery<{
+        market_id: string;
+        game_id: string;
+        market_type: MarketType;
+        side: MarketSnapshot['side'];
+        player_id: string | null;
+        player_name: string | null;
+        sportsbook: string;
+        line: string | number | null;
+        american_odds: number | null;
+        implied_prob: string | number | null;
+        captured_at: string;
+        source: MarketSnapshot['source'];
+      }>(
+        `
+          SELECT market_id, game_id, market_type, side, player_id, player_name, sportsbook,
+                 line, american_odds, implied_prob, captured_at, source
+          FROM odds_snapshots
+          WHERE captured_at >= NOW() - INTERVAL '14 days'
+          ORDER BY captured_at ASC
+          LIMIT $1
+        `,
+        [MAX_SNAPSHOTS]
+      );
+      return rows.map((row) => normalizeSnapshot({
+        marketId: row.market_id,
+        gameId: row.game_id,
+        marketType: row.market_type,
+        side: row.side,
+        playerId: row.player_id || undefined,
+        playerName: row.player_name || undefined,
+        sportsbook: row.sportsbook,
+        line: row.line === null ? undefined : Number(row.line),
+        americanOdds: row.american_odds ?? undefined,
+        impliedProb: row.implied_prob === null ? undefined : Number(row.implied_prob),
+        timestamp: row.captured_at,
+        source: row.source,
+      }));
+    } catch (error) {
+      console.warn('[ODDS_DB_READ_FAILED] falling back to local cache', error);
+    }
+  }
+
   try {
     const raw = await fs.readFile(MARKET_STORE_FILE, 'utf-8');
     const payload = JSON.parse(raw) as MarketStorePayload;
@@ -49,6 +96,40 @@ export async function readMarketSnapshots(): Promise<MarketSnapshot[]> {
 
 export async function writeMarketSnapshots(snapshots: MarketSnapshot[]): Promise<void> {
   const normalized = snapshots.map(normalizeSnapshot);
+  if (isPgConfigured()) {
+    try {
+      await ensureOperationalTables();
+      for (const snapshot of normalized) {
+        await pgQuery(
+          `
+            INSERT INTO odds_snapshots (
+              market_id, game_id, market_type, side, player_id, player_name, sportsbook,
+              line, american_odds, implied_prob, source, captured_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::timestamptz)
+            ON CONFLICT (market_id, captured_at) DO NOTHING
+          `,
+          [
+            snapshot.marketId,
+            snapshot.gameId,
+            snapshot.marketType,
+            snapshot.side,
+            snapshot.playerId || null,
+            snapshot.playerName || null,
+            snapshot.sportsbook,
+            Number.isFinite(Number(snapshot.line)) ? Number(snapshot.line) : null,
+            Number.isFinite(Number(snapshot.americanOdds)) ? Number(snapshot.americanOdds) : null,
+            Number.isFinite(Number(snapshot.impliedProb)) ? Number(snapshot.impliedProb) : null,
+            snapshot.source,
+            snapshot.timestamp,
+          ]
+        );
+      }
+      if (process.env.NODE_ENV === 'production') return;
+    } catch (error) {
+      console.warn('[ODDS_DB_WRITE_FAILED] falling back to local cache', error);
+    }
+  }
+
   const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const retained = normalized.filter((s) => new Date(s.timestamp).getTime() >= cutoff);
   const capped = retained.slice(-MAX_SNAPSHOTS);
