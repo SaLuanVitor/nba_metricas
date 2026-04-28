@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `6dc8d4a chore: refresh TypeScript build info`
-- Status geral: Fundacao tecnica criada; proximo foco e banco real, settlement e acuracia auditavel.
+- Ultimo commit conhecido: `23dd949`
+- Status geral: Migracao operacional validada em Postgres Docker local; proximo foco e settlement/acuracia auditavel.
 
 ## Como usar este arquivo
 
@@ -91,11 +91,14 @@
 
 ## Fase 1: Banco e migracoes reais
 
-- [ ] F1.01 - Aplicar migracao operacional em Postgres local.
+- [x] F1.01 - Aplicar migracao operacional em Postgres local.
   - Dono: aios-data-engineer
   - Depende de: `migrations/001_operational_schema.sql`, `DATABASE_URL`
   - Aceite: tabelas operacionais existem no banco local.
   - Verificacao: executar SQL no Postgres local; consultar `information_schema.tables`.
+  - Concluido em: 2026-04-28
+  - Commit: `23dd949`
+  - Nota: aplicado em Postgres Docker local (`postgresql://postgres:postgres@localhost:5432/nba_metricas`) e confirmadas `sync_runs`, `provider_runs`, `odds_snapshots`, `predictions`, `prediction_outcomes`, `model_runs`.
 
 - [ ] F1.02 - Aplicar migracao operacional em Postgres Railway.
   - Dono: aios-devops
@@ -103,11 +106,14 @@
   - Aceite: ambiente Railway possui as mesmas tabelas da migracao local.
   - Verificacao: `GET /api/health` com database configured e sem erro de schema.
 
-- [ ] F1.03 - Validar endpoints com banco real.
+- [x] F1.03 - Validar endpoints com banco real.
   - Dono: aios-dev
   - Depende de: F1.01 ou F1.02
   - Aceite: `/api/health`, `/api/model-runs`, `/api/accuracy`, `/api/predictions/today` respondem sem excecao.
   - Verificacao: chamadas HTTP locais ou staging; `npm run typecheck`.
+  - Concluido em: 2026-04-28
+  - Commit: `23dd949`
+  - Nota: validado em `localhost:3000` com sessao de usuario local aprovada; endpoints retornaram 200. `/api/accuracy` retornou warning esperado por ausencia de outcomes liquidados.
 
 - [ ] F1.04 - Registrar modelo de versionamento de migracoes.
   - Dono: aios-data-engineer
@@ -200,6 +206,7 @@
   - Depende de: F3.01
   - Aceite: usuario ve jogos, props, probabilidade, edge, EV, risco e link de auditoria.
   - Verificacao: browser local; responsividade desktop/mobile.
+  - Nota UX 2026-04-28: dashboard atual mostra jogos/projecoes gerais, mas ainda nao consome `/api/predictions/today` como fluxo de decisao com props, edge, EV, risco e auditoria.
 
 - [ ] F5.02 - Adicionar filtros de decisao na UI.
   - Dono: aios-dev
@@ -244,6 +251,7 @@
   - Depende de: baseline atual
   - Aceite: `npm run lint` sem warnings.
   - Verificacao: `npm run lint`.
+  - Nota QA 2026-04-28: `npm run lint` passou sem erros, mas ainda reporta 19 warnings de variaveis/args nao usados.
 
 - [ ] F6.05 - Revisar versionamento de artefatos.
   - Dono: aios-devops
@@ -288,4 +296,3 @@
   - Depende de: F6.06
   - Aceite: release tem changelog, gates, rollback e monitoramento.
   - Verificacao: release tag e smoke tests pos-deploy.
-
