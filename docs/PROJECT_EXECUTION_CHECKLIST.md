@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `5fa2d40 docs: mark accuracy validation complete`
+- Ultimo commit conhecido: `38537c9 feat: add today decision dashboard`
 - Status geral: Migracao operacional local, sync_runs, settlement e acuracia real validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e produto do usuario/testes.
 
 ## Como usar este arquivo
@@ -157,11 +157,14 @@
 
 ## Fase 3: Prediction Engine auditavel
 
-- [ ] F3.01 - Garantir ID auditavel para toda pick exibida.
+- [x] F3.01 - Garantir ID auditavel para toda pick exibida.
   - Dono: aios-dev
   - Depende de: F1.01, F2.02
   - Aceite: toda entrada de `/api/predictions/today` possui `predictionId` e `auditUrl` funcional.
   - Verificacao: chamar `/api/predictions/today`; abrir `/api/predictions/{id}`.
+  - Concluido em: 2026-04-28
+  - Commit: `f743e9a`
+  - Nota: validado com snapshot manual em Postgres local; toda pick retornada por `/api/predictions/today` inclui `predictionId` e `auditUrl`.
 
 - [x] F3.02 - Adicionar filtros em `/api/predictions/today`.
   - Dono: aios-dev
@@ -227,18 +230,24 @@
 
 ## Fase 5: Produto do usuario
 
-- [ ] F5.01 - Criar tela "Hoje" focada em decisoes.
+- [x] F5.01 - Criar tela "Hoje" focada em decisoes.
   - Dono: aios-dev
   - Depende de: F3.01
   - Aceite: usuario ve jogos, props, probabilidade, edge, EV, risco e link de auditoria.
   - Verificacao: browser local; responsividade desktop/mobile.
   - Nota UX 2026-04-28: dashboard atual mostra jogos/projecoes gerais, mas ainda nao consome `/api/predictions/today` como fluxo de decisao com props, edge, EV, risco e auditoria.
+  - Concluido em: 2026-04-28
+  - Commit: `38537c9`
+  - Nota: criada tela `/today` com jogos, picks, probabilidade, edge, EV, risco, razoes e link de auditoria; smoke autenticado retornou 200.
 
-- [ ] F5.02 - Adicionar filtros de decisao na UI.
+- [x] F5.02 - Adicionar filtros de decisao na UI.
   - Dono: aios-dev
   - Depende de: F5.01, F3.02
   - Aceite: filtros por mercado, jogo, risco, probabilidade e edge.
   - Verificacao: interacao manual e estado preservado na tela.
+  - Concluido em: 2026-04-28
+  - Commit: `38537c9`
+  - Nota: filtros de jogo, mercado, risco, probabilidade minima e edge minimo conectados aos query params de `/api/predictions/today`; build validou a rota.
 
 - [ ] F5.03 - Criar tela de auditoria de predicao.
   - Dono: aios-dev
@@ -246,11 +255,14 @@
   - Aceite: exibe input snapshot, output, fatores, modelo, status de settlement e outcome.
   - Verificacao: abrir auditoria a partir de uma pick.
 
-- [ ] F5.04 - Ajustar linguagem responsavel.
+- [x] F5.04 - Ajustar linguagem responsavel.
   - Dono: aios-po
   - Depende de: telas de usuario
   - Aceite: copy evita promessa de certeza e deixa claro que sao probabilidades.
   - Verificacao: revisao textual das telas principais.
+  - Concluido em: 2026-04-28
+  - Commit: `38537c9`
+  - Nota: tela `/today` usa linguagem de apoio analitico e evita promessa de resultado certo.
 
 ## Fase 6: Testes, DevOps e producao
 
