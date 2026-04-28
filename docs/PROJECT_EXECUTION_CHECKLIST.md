@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `55d861d test: add api route integration coverage`
-- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual, testes unitarios e testes de integracao API iniciais validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e E2E/DevOps.
+- Ultimo commit conhecido: `6278670 test: add today audit e2e flow`
+- Status geral: Migracao operacional local, sync_runs, settlement, acuracia real, tela Hoje, auditoria visual, testes unitarios, integracao API e E2E minimo validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e limpeza DevOps.
 
 ## Como usar este arquivo
 
@@ -287,11 +287,14 @@
   - Commit: `55d861d`
   - Nota: adicionada suite `tests/api-routes.test.ts` com mocks de registry, providers, odds e sync; cobre today, prediction audit, accuracy e sync unauthorized; `npm run test` passou com 20 testes.
 
-- [ ] F6.03 - Criar E2E minimo.
+- [x] F6.03 - Criar E2E minimo.
   - Dono: aios-devops
   - Depende de: F5.01
   - Aceite: fluxo login -> tela Hoje -> auditoria passa em CI.
   - Verificacao: `npm run test:e2e` executa Playwright real.
+  - Concluido em: 2026-04-28
+  - Commit: `6278670`
+  - Nota: adicionado Playwright com fluxo login -> `/today` -> auditoria mockada de predicao; `npm run test:e2e` passou em Chromium.
 
 - [ ] F6.04 - Limpar warnings de lint.
   - Dono: aios-dev
