@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `5e669dc fix: make production start resilient`
+- Ultimo commit conhecido: `c2ea557 docs: document database migrations and sync validation`
 - Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; proximo foco e odds snapshots, settlement e acuracia auditavel.
 
 ## Como usar este arquivo
@@ -121,7 +121,7 @@
   - Aceite: documentar como aplicar, reverter e auditar migracoes futuras.
   - Verificacao: atualizar docs operacionais e revisar com aios-devops.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `c2ea557`
   - Nota: criado `docs/DB_MIGRATIONS.md` com convencao de arquivos, aplicacao local Docker, aplicacao Railway, auditoria e politica de rollback.
 
 ## Fase 2: Pipeline de dados NBA
@@ -132,7 +132,7 @@
   - Aceite: cada sync manual ou cron salva status, output e erro quando houver.
   - Verificacao: `POST /api/sync`; consulta em `sync_runs`.
   - Concluido em: 2026-04-28
-  - Commit: `PENDING_COMMIT`
+  - Commit: `c2ea557`
   - Nota: validado com `POST /api/sync` tipo `maintenance` em standalone local com `SYNC_ADMIN_SECRET`; `sync_runs` gravou `status=success`, `output_jsonb` e sem erro. Cron operacional segue em F2.04.
 
 - [ ] F2.02 - Persistir odds snapshots em Postgres em ambiente real.
