@@ -4,8 +4,8 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `e0b8ac7 feat: add prediction settlement flow`
-- Status geral: Migracao operacional local, modelo de versionamento e sync_runs manual validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e settlement/acuracia real.
+- Ultimo commit conhecido: `2c9c0bf docs: record settlement checkpoint`
+- Status geral: Migracao operacional local, sync_runs, settlement e acuracia real validados; odds snapshots bloqueado por secret BoltOdds; proximo foco e produto do usuario/testes.
 
 ## Como usar este arquivo
 
@@ -216,11 +216,14 @@
   - Commit: `e0b8ac7`
   - Nota: outcomes sao persistidos via upsert em `prediction_outcomes` e sincronizam `predictions.settlement_status`; consulta SQL confirmou `actual_value`, `roi_units`, `error_abs`, `brier_score` e `settled_at`.
 
-- [ ] F4.04 - Validar `/api/accuracy` com outcomes reais.
+- [x] F4.04 - Validar `/api/accuracy` com outcomes reais.
   - Dono: aios-analyst
   - Depende de: F4.03
   - Aceite: endpoint retorna sample size, win/loss, ROI, erro medio e Brier score sem warning de ausencia de amostra.
   - Verificacao: `GET /api/accuracy`; `GET /api/ai/accuracy`.
+  - Concluido em: 2026-04-28
+  - Commit: `PENDING_COMMIT`
+  - Nota: validado com outcome controlado em Postgres local; `/api/accuracy` e `/api/ai/accuracy` retornaram sample size 1, accuracy 100, ROI 90.91, erro medio 3.5 e Brier 0.1225 sem warning.
 
 ## Fase 5: Produto do usuario
 
