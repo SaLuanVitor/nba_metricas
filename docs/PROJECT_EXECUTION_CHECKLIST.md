@@ -4,7 +4,7 @@
 
 - Data: 2026-04-28
 - Branch: `main`
-- Ultimo commit conhecido: `23dd949`
+- Ultimo commit conhecido: `525ac05`
 - Status geral: Migracao operacional validada em Postgres Docker local; proximo foco e settlement/acuracia auditavel.
 
 ## Como usar este arquivo
@@ -97,7 +97,7 @@
   - Aceite: tabelas operacionais existem no banco local.
   - Verificacao: executar SQL no Postgres local; consultar `information_schema.tables`.
   - Concluido em: 2026-04-28
-  - Commit: `23dd949`
+  - Commit: `525ac05`
   - Nota: aplicado em Postgres Docker local (`postgresql://postgres:postgres@localhost:5432/nba_metricas`) e confirmadas `sync_runs`, `provider_runs`, `odds_snapshots`, `predictions`, `prediction_outcomes`, `model_runs`.
 
 - [ ] F1.02 - Aplicar migracao operacional em Postgres Railway.
@@ -112,7 +112,7 @@
   - Aceite: `/api/health`, `/api/model-runs`, `/api/accuracy`, `/api/predictions/today` respondem sem excecao.
   - Verificacao: chamadas HTTP locais ou staging; `npm run typecheck`.
   - Concluido em: 2026-04-28
-  - Commit: `23dd949`
+  - Commit: `525ac05`
   - Nota: validado em `localhost:3000` com sessao de usuario local aprovada; endpoints retornaram 200. `/api/accuracy` retornou warning esperado por ausencia de outcomes liquidados.
 
 - [ ] F1.04 - Registrar modelo de versionamento de migracoes.
