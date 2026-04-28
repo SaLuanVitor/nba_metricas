@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { getTrendColor, getTrendIcon } from "@/lib/ai-experts"
+import { getTrendColor } from "@/lib/ai-experts"
 import type { TrendDirection } from "@/lib/types"
 import { TrendingUp, TrendingDown, Minus, ChevronsUp, ChevronsDown } from "lucide-react"
 

@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { PlayerAvatar, TeamLogo } from "@/components/entity-media"
-import { cn } from "@/lib/utils"
 import type { Position, SortDirection } from "@/lib/types"
 import {
   TrendingUp,

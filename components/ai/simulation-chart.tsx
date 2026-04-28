@@ -11,7 +11,6 @@ import {
   ReferenceLine 
 } from "recharts"
 import type { SimulationResult } from "@/lib/types"
-import { cn } from "@/lib/utils"
 
 interface SimulationChartProps {
   simulation: SimulationResult

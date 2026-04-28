@@ -63,7 +63,7 @@ class DataOrchestrator {
     await fs.writeFile(CACHE_FILE, JSON.stringify({ entries }, null, 2), 'utf-8');
   }
 
-  private getCached<T>(key: string): CachedEntry | null {
+  private getCached(key: string): CachedEntry | null {
     const cached = this.memoryCache.get(key);
     if (!cached) return null;
     return cached;
@@ -152,7 +152,7 @@ class DataOrchestrator {
     }
   ): Promise<OrchestratedResponse<T>> {
     const ttlMs = options?.ttlMs ?? CACHE_TTL_MS;
-    const cached = this.getCached<T>(key);
+    const cached = this.getCached(key);
     let lastFailure: ProviderResponse<T> | null = null;
 
     for (let index = 0; index < fetchers.length; index += 1) {

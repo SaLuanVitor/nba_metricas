@@ -275,7 +275,7 @@ export function calculateTargetProbability(
   target: number,
   type: "over" | "under" | "exact"
 ): number {
-  const { outcomes, distribution } = simulation
+  const { outcomes } = simulation
   
   if (type === "over") {
     const overOutcomes = outcomes.filter(o => o.value > target)

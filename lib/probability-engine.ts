@@ -213,7 +213,6 @@ function calculateTripleDoubleProb(player: Player): Probability {
 // Gera probabilidades simplificadas para dados da API
 export function generatePlayerProbabilitiesRaw(points: number): { under: number; over: number; push: number; line: number } {
   const line = Math.round(points * 2) / 2
-  const base = 50
   const variance = Math.sqrt(points * 0.3)
   const zScore = (points - line) / variance
   const overProb = Math.min(95, Math.max(5, Math.round(50 + Math.tanh(zScore * 0.5) * 40)))

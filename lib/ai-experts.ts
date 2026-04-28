@@ -186,7 +186,6 @@ export function analyzeTeam(team: TeamWithStats, roster: Player[]): ExpertAnalys
   }
   
   // Analisa elenco
-  const healthyPlayers = roster.filter(p => !p.injury)
   const injuredPlayers = roster.filter(p => p.injury)
   
   if (injuredPlayers.length > 0) {
@@ -313,8 +312,6 @@ export function analyzePlayerRaw(player: any): ExpertAnalysis {
   const projection = player.projection || {}
   
   const strengths: string[] = []
-  const weaknesses: string[] = []
-  
   const points = stats.points || 0
   const assists = stats.assists || 0
   const rebounds = stats.rebounds || 0
@@ -363,7 +360,7 @@ export function analyzeTrendRaw(player: any, metric: string): TrendAnalysis {
 }
 
 // Gera insights simplificados
-export function generateInsightsRaw(players: any[], teams: any[]): AIInsight[] {
+export function generateInsightsRaw(players: any[], _teams: any[]): AIInsight[] {
   const insights: AIInsight[] = []
   const now = new Date()
   

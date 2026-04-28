@@ -14,7 +14,7 @@ import { TrendIndicator } from "@/components/ai/trend-indicator"
 import { OperationalAlert } from "@/components/operational-alert"
 import { generatePlayerProbabilities } from "@/lib/probability-engine"
 import { simulatePlayerMetric } from "@/lib/simulation-engine"
-import { analyzePlayer, analyzeTeam, generateInsights, analyzeTrend } from "@/lib/ai-experts"
+import { analyzePlayer, generateInsights, analyzeTrend } from "@/lib/ai-experts"
 import { Bot, Brain, LineChart, Sparkles, Users, User, MessageSquare, Send } from "lucide-react"
 import type { ExpertAnalysis, Player, PlayerProbabilities, SimulationResult, StatCategory, TeamWithStats, TrendAnalysis } from "@/lib/types"
 

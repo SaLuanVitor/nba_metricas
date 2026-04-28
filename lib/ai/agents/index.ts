@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import type { Player, Team } from '@/lib/types';
 
 export interface NBAAgent {

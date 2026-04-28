@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ConfidenceMeter } from "./confidence-badge"
 import type { ExpertAnalysis } from "@/lib/types"
-import { cn } from "@/lib/utils"
 import { 
   Zap, 
   AlertCircle, 

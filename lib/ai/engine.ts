@@ -348,14 +348,14 @@ export class AIEngine {
   private modelVersion: string = 'prediction-engine-v1';
   private lastTrainingDate: Date = new Date();
   
-  async trainModel(historicalData: any[]): Promise<void> {
+  async trainModel(_historicalData: any[]): Promise<void> {
     console.log('Training AI model with historical data...');
     
     this.lastTrainingDate = new Date();
     console.log('Model training completed');
   }
   
-  async evaluateModel(testData: any[]): Promise<{ accuracy: number; precision: number; recall: number }> {
+  async evaluateModel(_testData: any[]): Promise<{ accuracy: number; precision: number; recall: number }> {
     return {
       accuracy: 0.76,
       precision: 0.74,

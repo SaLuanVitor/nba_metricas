@@ -101,7 +101,6 @@ export default function Dashboard() {
   const liveGamesCountDisplay = games.filter((g: any) => isGameLive(g)).length;
   const scheduledGamesCount = games.filter((g: any) => isGameScheduled(g)).length;
   const finishedGamesCount = games.filter((g: any) => isGameFinished(g)).length;
-  const trendingUpCount = players.filter((p: any) => p.projection?.trend === 'up').length;
   const todayGameTeamAbbrs = useMemo(() => {
     const set = new Set<string>();
     for (const game of games) {
@@ -410,7 +409,6 @@ function GameCard({ game }: { game: any }) {
   const awayTeamLogo = game.awayTeam?.logoUrl || game.AWAY_TEAM?.logoUrl || "";
   const homeScore = game.homeScore || game.HOME_SCORE || 0;
   const awayScore = game.awayScore || game.AWAY_SCORE || 0;
-  const status = game.status || game.GameStatus;
   const gameTime = game.gameTime || game.GAME_TIME || '';
   const gameDate = game.date || game.GAME_DATE || '';
   const gameEndTime = game.gameEndTime || game.GAME_END_TIME || '';
