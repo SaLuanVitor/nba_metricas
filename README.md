@@ -28,7 +28,7 @@ Acesse `http://localhost:3000`.
 | --- | --- |
 | `npm run dev` | Inicia o servidor de desenvolvimento |
 | `npm run build` | Build de producao, sem mascarar erros TypeScript |
-| `npm run start` | Inicia o standalone server gerado pelo build |
+| `npm run start` | Inicia o servidor de producao, usando standalone quando disponivel e fallback para `next start` |
 | `npm run lint` | Executa ESLint flat config |
 | `npm run typecheck` | Executa `tsc --noEmit` |
 | `npm run test` | Gate minimo atual: typecheck |
