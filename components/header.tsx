@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
-import { Activity, Users, GitCompare, TrendingUp, Shield, Bot, Target } from "lucide-react"
+import { Activity, Users, GitCompare, TrendingUp, Shield, Bot, Target, CalendarDays } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ import {
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Activity },
+  { name: "Hoje", href: "/today", icon: CalendarDays },
   { name: "Times", href: "/teams", icon: Shield },
   { name: "Jogadores", href: "/players", icon: Users },
   { name: "IA Analysis", href: "/ai", icon: Bot },
