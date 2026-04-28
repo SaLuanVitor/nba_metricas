@@ -4,6 +4,7 @@ import { getDataOrchestrator } from "@/lib/data-orchestrator";
 import { getMarketSnapshotsByGame, type MarketSnapshot, type MarketType } from "@/lib/odds/market-store";
 import { americanOddsToImpliedProb, calculateEdge, expectedValuePerUnit, toPercent } from "@/lib/odds/market-utils";
 import { buildPredictionId, savePrediction } from "@/lib/predictions/registry";
+import { predictionRiskFrom } from "@/lib/predictions/risk";
 import type {
   AuditablePrediction,
   PredictionInputSnapshot,
@@ -35,12 +36,6 @@ function parseNumberFilter(value: string | null): number | null {
   if (value === null || value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function riskFrom(probability: number, confidence: string, edge: number | null): RiskLevel {
-  if (probability >= 62 && (edge ?? 0) >= 0.04 && (confidence === "high" || confidence === "very-high")) return "baixo";
-  if (probability >= 55 && (edge ?? 0) >= 0.01) return "medio";
-  return "alto";
 }
 
 function buildReasons(params: {
@@ -134,7 +129,7 @@ function buildAuditablePrediction(params: {
     confidence: probabilityResult.confidence,
     edge: edge === null ? null : Number(edge.toFixed(4)),
     expectedValue: expectedValue === null ? null : Number(expectedValue.toFixed(4)),
-    riskLevel: riskFrom(probability, probabilityResult.confidence, edge),
+    riskLevel: predictionRiskFrom(probability, probabilityResult.confidence, edge),
     reasons: buildReasons({
       player: params.player,
       market: params.market,
